@@ -7,27 +7,94 @@
     <version>1.0.3</version>
   </parent>
   <artifactId>jocular-examples</artifactId>
-  <version>2.0-SNAPSHOT</version>
+  <version>1.0-SNAPSHOT</version>
+
+  <scm>
+    <connection>scm:git:https://github.com/jherico/jocular-examples.git</connection>
+    <developerConnection>scm:git:git@github.com:jherico/jocular-examples.git</developerConnection>
+    <url>https://github.com/jherico/glamour</url>
+    <tag>glamour-lwjgl-1.0.1</tag>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>saintandreas-org-mvn-repo</id>
+      <url>http://ec2.saintandreas.org/maven</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <dependencies>
-    <dependency>
-      <groupId>org.saintandreas</groupId>
-      <artifactId>jocular</artifactId>
-      <version>2.0.0</version>
-    </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.saintandreas</groupId>
+      <artifactId>glamour-lwjgl</artifactId>
+      <version>2.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.saintandreas</groupId>
+      <artifactId>math</artifactId>
+      <version>1.0.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.saintandreas</groupId>
+      <artifactId>oria-resources</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.saintandreas</groupId>
+      <artifactId>jocular</artifactId>
+      <version>2.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>uk.co.caprica</groupId>
+      <artifactId>vlcj</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpasyncclient</artifactId>
+      <version>4.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jscience</groupId>
+      <artifactId>jscience</artifactId>
+      <version>4.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.3.3</version>
+    </dependency>
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.3.3</version>
+    </dependency>
   </dependencies>
-  <repositories>
-    <repository>
-      <id>saintandreas</id>
-      <url>http://maven.saintandreas.org/maven</url>
-      <layout>default</layout>
-    </repository>
-  </repositories>
   <build>
     <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>com.googlecode.mavennatives</groupId>
         <artifactId>maven-nativedependencies-plugin</artifactId>
