@@ -17,7 +17,6 @@ import javax.measure.Measure;
 import javax.measure.quantity.Length;
 import javax.measure.unit.SI;
 
-import org.jscience.geography.coordinates.LatLong;
 import org.lwjgl.input.Keyboard;
 import org.saintandreas.ExampleResource;
 import org.saintandreas.Statics;
@@ -35,6 +34,7 @@ import org.saintandreas.math.Matrix4f;
 import org.saintandreas.math.Quaternion;
 import org.saintandreas.math.Vector3f;
 import org.saintandreas.math.Vector4f;
+import org.saintandreas.resources.BasicResource;
 import org.saintandreas.scene.RootNode;
 import org.saintandreas.scene.SceneNode;
 import org.saintandreas.scene.ShaderNode;
@@ -46,34 +46,14 @@ import com.oculusvr.capi.EyeRenderDesc;
 
 public class IronManDemo extends RiftApp {
   private static final LatLon HOME = LatLon.fromDegrees(47.5391123, -122.2775141);
+  private static final int RESOLUTION = 512;
+  private static final long MAX_FLIGHT_AGE = 1000 * 15;
+
   private RootNode root = new RootNode();
   private double currentElevation = 0;
-  private List<Flight> flights = Lists.newArrayList();
   private long flightUpdateTime = 0;
-  private static final long MAX_FLIGHT_AGE = 1000 * 60;
-
-  public static float distFrom(LatLong al, LatLong bl) {
-    double earthRadius = 3958.75;
-    double dLat = al.latitudeValue(RADIAN) - bl.latitudeValue(RADIAN);
-    double dLng = al.longitudeValue(RADIAN) - bl.longitudeValue(RADIAN);
-    double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(al.latitudeValue(RADIAN))
-        * Math.cos(bl.latitudeValue(RADIAN)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    double dist = earthRadius * c;
-    int meterConversion = 1609;
-    return (float) (dist * meterConversion);
-  }
-
-  public IronManDemo() throws IOException {
-    // String flightsJson =
-    // Resources.toString(Resources.getResource("flights.json"),
-    // Charsets.UTF_8);
-    // flights = Flight.parseFlights(flightsJson);
-  }
-
-  IndexedGeometry terrainGeometry;
-
-  private static final int RESOLUTION = 250;
+  private IndexedGeometry terrainGeometry;
+  private List<Flight> flights = Lists.newArrayList();
   private Measure<Length> radius = Measure.valueOf(20, KILOMETER);
 
   protected void updateTerrainGeometry(LatLon center) {
@@ -86,7 +66,7 @@ public class IronManDemo extends RiftApp {
     List<Vector3f> vs1 = WorldWindUtils.fetchElevations(center, RESOLUTION, radius);
     currentElevation = WorldWindUtils.fetchElevation(center);
     List<Vector4f> vs2 = new ArrayList<>();
-    List<Short> is = new ArrayList<>();
+    List<Integer> is = new ArrayList<>();
     Statics.forEach(RESOLUTION, (x, y) -> {
       int offset = RESOLUTION * y + x;
       Vector3f v = vs1.get(offset);
@@ -98,18 +78,23 @@ public class IronManDemo extends RiftApp {
       double f = 1 - ((vr / r) * 0.9);
       f = Math.pow(f, 2);
       Vector3f color = sea ? Vector3f.UNIT_Z : Vector3f.UNIT_Y;
-      
       vs2.add(new Vector4f(color.mult((float)f)));
-      is.add((short) (offset));
+      vs2.add(new Vector4f((0 == x % 2) ? -1 : 1, (0 == y % 2) ? -1 : 1, 0, 0));
+      if ((y < (RESOLUTION - 1)) && (x < (RESOLUTION - 1))) {
+        is.add(offset + RESOLUTION);
+        is.add(offset + RESOLUTION + 1);
+        is.add(offset + 1);
+        is.add(offset);
+      }
     });
     IndexedGeometry.Builder builder = new IndexedGeometry.Builder(is, vs2);
-    builder.withDrawType(GL_POINTS).withAttribute(Attribute.POSITION).withAttribute(Attribute.COLOR);
+    builder.withDrawType(GL_QUADS).withAttribute(Attribute.POSITION).withAttribute(Attribute.COLOR).withAttribute(4);
     terrainGeometry = builder.build();
   }
 
   protected SceneNode getTerrainNode() {
     updateTerrainGeometry(HOME);
-    Program program = new Program(ExampleResource.SHADERS_COLORED_VS, ExampleResource.SHADERS_COLORED_FS);
+    Program program = new Program(new BasicResource("shaders/Terrain.vs"), new BasicResource("shaders/Terrain.fs"));
     return new SceneNode().addChild( //
         new ShaderNode(program, () -> {
           MatrixStack.bindAll(program);
@@ -219,7 +204,7 @@ public class IronManDemo extends RiftApp {
     Quaternion q = hmd.getSensorState(OVR.ovr_GetTimeInSeconds()).Predicted.Pose.Orientation.toQuaternion();
     Matrix4f m = new Matrix4f();// .rotate(q);
     MatrixStack.MODELVIEW.identity().preMultiply(m.invert())
-        .translate(new Vector3f(0, (float) -currentElevation * 60, 0));
+        .translate(new Vector3f(0, (float) -currentElevation * radius.floatValue(KILOMETER), 0));
   }
 
   @Override

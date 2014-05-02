@@ -16,8 +16,8 @@ public class Scene {
     return new TransformNode(() -> {
       MatrixStack.MODELVIEW.scale(scale);
     }).addChild(
-        new ShaderNode(program, p -> {
-          MatrixStack.bindAll(p);
+        new ShaderNode(program, ()-> {
+          MatrixStack.bindAll(program);
         }).addChild(
             new GeometryNode(
                 OpenGL.makeColorCube()
