@@ -6,7 +6,11 @@ import static org.lwjgl.opengl.GL20.*;
 import gov.nasa.worldwind.geom.LatLon;
 import gov.nasa.worldwind.geom.Sector;
 
+import java.awt.geom.Path2D;
+import java.awt.geom.Point2D;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +22,12 @@ import javax.measure.quantity.Length;
 import javax.measure.unit.SI;
 
 import org.lwjgl.input.Keyboard;
+import org.nocrala.tools.gis.data.esri.shapefile.ShapeFileReader;
+import org.nocrala.tools.gis.data.esri.shapefile.ValidationPreferences;
+import org.nocrala.tools.gis.data.esri.shapefile.exception.InvalidShapeFileException;
+import org.nocrala.tools.gis.data.esri.shapefile.shape.AbstractShape;
+import org.nocrala.tools.gis.data.esri.shapefile.shape.PointData;
+import org.nocrala.tools.gis.data.esri.shapefile.shape.shapes.PolygonShape;
 import org.saintandreas.ExampleResource;
 import org.saintandreas.Statics;
 import org.saintandreas.flightradar.Flight;
@@ -45,6 +55,7 @@ import com.google.common.collect.Lists;
 import com.oculusvr.capi.EyeRenderDesc;
 
 public class IronManDemo extends RiftApp {
+//  private static final LatLon HOME = LatLon.fromDegrees(51.4682715,0.0107339);
   private static final LatLon HOME = LatLon.fromDegrees(47.5391123, -122.2775141);
   private static final int RESOLUTION = 512;
   private static final long MAX_FLIGHT_AGE = 1000 * 15;
@@ -55,8 +66,29 @@ public class IronManDemo extends RiftApp {
   private IndexedGeometry terrainGeometry;
   private List<Flight> flights = Lists.newArrayList();
   private Measure<Length> radius = Measure.valueOf(20, KILOMETER);
-
+  private List<Path2D> water = Lists.newArrayList();
+  
+  
   protected void updateTerrainGeometry(LatLon center) {
+    
+//    System.out.println(SHAPES.size());
+//    List<Path2D> neededShapes = new ArrayList<>();
+//    Sector s = Sector.boundingSector(WorldWindUtils.GLOBE, HOME, Measure.valueOf(km, SI.KILOMETER).doubleValue(SI.METER));
+//    List<LatLon> lv = WorldWindUtils.getLatLongs(s, res);
+//    for (AbstractPolyPlainShape shape : SHAPES) {
+//      Sector c = Sector.fromDegrees(shape.getBoxMaxX(), shape.getBoxMaxY(), shape.getBoxMinX(), shape.getBoxMinY());
+//      if (c.intersects(s)) {
+//        Path2D pg = new Path2D.Double();
+//        PointData [] pds = shape.getPoints();
+//        pg.moveTo(pds[0].getX(), pds[0].getY());
+//        for (int i = 1; i < pds.length; ++i) {
+//          pg.lineTo(pds[i].getX(), pds[i].getY());
+//        }
+//        pg.lineTo(pds[0].getX(), pds[0].getY());
+//        neededShapes.add(pg);
+//      }
+//    }
+    
     if (null != terrainGeometry) {
       terrainGeometry.destroy();
       terrainGeometry = null;
@@ -72,6 +104,12 @@ public class IronManDemo extends RiftApp {
       Vector3f v = vs1.get(offset);
       LatLon ll = lv.get(offset);
       boolean sea = v.z <= 0;
+      for (Path2D w : water) {
+        if (w.contains(new Point2D.Double(ll.longitude.degrees, ll.latitude.degrees))) {
+          sea = true;
+          break;
+        }
+      }
       vs2.add(new Vector4f(-v.x, v.z, v.y, 1.0f));
       double r = radius.doubleValue(METER) * Math.sqrt(2);
       double vr = v.length();
@@ -125,7 +163,7 @@ public class IronManDemo extends RiftApp {
     planeTexture.bind();
     glEnable(GL_POINT_SPRITE);
     glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
-    double maxDistance = 150000;
+    double maxDistance = 30000;
     MatrixStack.MODELVIEW.withPush((mv) -> {
 //      mv.translate(new Vector3f(0, (float) -currentElevation * 100, 0));
 
@@ -220,9 +258,38 @@ public class IronManDemo extends RiftApp {
   private static final String SHAPE_FILES[] = new String[] {
   // "F:/Downloads/wash/temp.shp",
   // "C:/Users/bdavis/Git/ShapeFileReader/testdata/freeworld/10m-coastline/10m_coastline.shp"
-  "F:/Downloads/water10/temp.shp", };
+//  "F:/Downloads/water10/temp.shp", 
+  "F:/Downloads/coast/COAST.shp",
+  };
 
-  public static void main(String[] args) throws IOException {
+  public IronManDemo() throws FileNotFoundException, InvalidShapeFileException, IOException {
+    ValidationPreferences vp = new ValidationPreferences();
+    vp.setMaxNumberOfPointsPerShape(1000000);
+    ShapeFileReader r = new ShapeFileReader(new FileInputStream(new File(SHAPE_FILES[0])), vp);
+    AbstractShape s;
+    while ((s = r.next()) != null) {
+      switch (s.getShapeType()) {
+      case POLYGON:
+        Path2D.Double path = new Path2D.Double();
+        PolygonShape aPolygon = (PolygonShape) s;
+        boolean started = false;
+        for (PointData p : aPolygon.getPoints()) {
+          if (!started) {
+            path.moveTo(p.getX(), p.getY());
+            started = true;
+          } else {
+            path.lineTo(p.getX(), p.getY());
+          }
+        }
+        path.closePath();
+        water.add(path);
+        break;
+      default:
+        System.out.println("Read other type of shape.");
+      }
+    }
+  }
+  public static void main(String[] args) throws IOException, InvalidShapeFileException {
     // XYZ test =
     // HOME.getCoordinateReferenceSystem().getConverterTo(XYZ.CRS).convert(HOME);
     // getElevations(HOME, Measure.valueOf(15, SI.KILOMETER));

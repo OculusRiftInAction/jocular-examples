@@ -92,6 +92,7 @@ public class Flight {
     return vector;
   }
   private static final String URL = "http://db8.flightradar24.com/zones/na_nw_all.js?callback=test&_=";
+//  String urlPrefix = "http://db8.flightradar24.com/zones/london_all.js?callback=test&_=";
   public static List<Flight> getFlights(long time) {
     try {
       String data = HttpUtil.getHttpResponse(URL + time);
