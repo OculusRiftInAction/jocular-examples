@@ -9,7 +9,6 @@ import gov.nasa.worldwind.geom.Sector;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,12 +21,6 @@ import javax.measure.quantity.Length;
 import javax.measure.unit.SI;
 
 import org.lwjgl.input.Keyboard;
-import org.nocrala.tools.gis.data.esri.shapefile.ShapeFileReader;
-import org.nocrala.tools.gis.data.esri.shapefile.ValidationPreferences;
-import org.nocrala.tools.gis.data.esri.shapefile.exception.InvalidShapeFileException;
-import org.nocrala.tools.gis.data.esri.shapefile.shape.AbstractShape;
-import org.nocrala.tools.gis.data.esri.shapefile.shape.PointData;
-import org.nocrala.tools.gis.data.esri.shapefile.shape.shapes.PolygonShape;
 import org.saintandreas.ExampleResource;
 import org.saintandreas.Statics;
 import org.saintandreas.flightradar.Flight;
@@ -52,7 +45,6 @@ import org.saintandreas.vr.oculus.RiftApp;
 import org.saintandreas.worldwind.WorldWindUtils;
 
 import com.google.common.collect.Lists;
-import com.oculusvr.capi.EyeRenderDesc;
 
 public class IronManDemo extends RiftApp {
 //  private static final LatLon HOME = LatLon.fromDegrees(51.4682715,0.0107339);
@@ -232,12 +224,12 @@ public class IronManDemo extends RiftApp {
       }
     }
 
-    for (int eye = 0; eye < 2; ++eye) {
-      EyeRenderDesc erd = eyeRenderDescs[eye];
-      // projections[eye] = new
-      // Matrix4f(OVR.ovrMatrix4f_Projection(erd.Desc.Fov, 0.1f, 1000000f,
-      // (byte) 1).M).transpose();
-    }
+//    for (int eye = 0; eye < 2; ++eye) {
+//      EyeRenderDesc erd = eyeRenderDescs[eye];
+//      // projections[eye] = new
+//      // Matrix4f(OVR.ovrMatrix4f_Projection(erd.Desc.Fov, 0.1f, 1000000f,
+//      // (byte) 1).M).transpose();
+//    }
 
     Quaternion q = hmd.getSensorState(OVR.ovr_GetTimeInSeconds()).Predicted.Pose.Orientation.toQuaternion();
     Matrix4f m = new Matrix4f();// .rotate(q);
@@ -262,34 +254,34 @@ public class IronManDemo extends RiftApp {
   "F:/Downloads/coast/COAST.shp",
   };
 
-  public IronManDemo() throws FileNotFoundException, InvalidShapeFileException, IOException {
-    ValidationPreferences vp = new ValidationPreferences();
-    vp.setMaxNumberOfPointsPerShape(1000000);
-    ShapeFileReader r = new ShapeFileReader(new FileInputStream(new File(SHAPE_FILES[0])), vp);
-    AbstractShape s;
-    while ((s = r.next()) != null) {
-      switch (s.getShapeType()) {
-      case POLYGON:
-        Path2D.Double path = new Path2D.Double();
-        PolygonShape aPolygon = (PolygonShape) s;
-        boolean started = false;
-        for (PointData p : aPolygon.getPoints()) {
-          if (!started) {
-            path.moveTo(p.getX(), p.getY());
-            started = true;
-          } else {
-            path.lineTo(p.getX(), p.getY());
-          }
-        }
-        path.closePath();
-        water.add(path);
-        break;
-      default:
-        System.out.println("Read other type of shape.");
-      }
-    }
+  public IronManDemo() throws FileNotFoundException, IOException {
+//    ValidationPreferences vp = new ValidationPreferences();
+//    vp.setMaxNumberOfPointsPerShape(1000000);
+//    ShapeFileReader r = new ShapeFileReader(new FileInputStream(new File(SHAPE_FILES[0])), vp);
+//    AbstractShape s;
+//    while ((s = r.next()) != null) {
+//      switch (s.getShapeType()) {
+//      case POLYGON:
+//        Path2D.Double path = new Path2D.Double();
+//        PolygonShape aPolygon = (PolygonShape) s;
+//        boolean started = false;
+//        for (PointData p : aPolygon.getPoints()) {
+//          if (!started) {
+//            path.moveTo(p.getX(), p.getY());
+//            started = true;
+//          } else {
+//            path.lineTo(p.getX(), p.getY());
+//          }
+//        }
+//        path.closePath();
+//        water.add(path);
+//        break;
+//      default:
+//        System.out.println("Read other type of shape.");
+//      }
+//    }
   }
-  public static void main(String[] args) throws IOException, InvalidShapeFileException {
+  public static void main(String[] args) throws IOException {
     // XYZ test =
     // HOME.getCoordinateReferenceSystem().getConverterTo(XYZ.CRS).convert(HOME);
     // getElevations(HOME, Measure.valueOf(15, SI.KILOMETER));
