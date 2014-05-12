@@ -1,4 +1,4 @@
-package org.saintandreas.vr;
+package org.saintandreas.vr.oculus;
 
 import static org.lwjgl.opengl.GL11.*;
 

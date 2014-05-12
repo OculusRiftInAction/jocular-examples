@@ -9,6 +9,7 @@ import org.saintandreas.gl.OpenGL;
 import org.saintandreas.gl.buffers.VertexArray;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.math.Vector3f;
+import org.saintandreas.vr.oculus.RiftApp;
 
 import com.oculusvr.capi.OvrLibrary;
 
