@@ -25,7 +25,7 @@ public class RiftDemo extends RiftApp {
     MatrixStack.MODELVIEW.lookat(Vector3f.UNIT_X.scale(ipd * 5), // eye position
         Vector3f.ZERO, // origin of the scene
         Vector3f.UNIT_Y); // up direction
-    program = new Program(ExampleResource.SHADERS_TEXTURED_VS, ExampleResource.SHADERS_TEXTURED_FS);
+    program = new Program(ExampleResource.SHADERS_COLORED_VS, ExampleResource.SHADERS_COLORED_FS);
     program.link();
     geometry = OpenGL.makeColorCube();
   }
