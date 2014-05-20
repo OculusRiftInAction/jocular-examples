@@ -35,7 +35,7 @@ public abstract class RiftApp extends LwjglApp {
   protected final HmdDesc hmdDesc;
   private int currentEye;
 
-  private int frameCount = -1;
+  protected int frameCount = -1;
   private FrameBuffer frameBuffers[] = new FrameBuffer[2];
   protected Matrix4f projections[] = new Matrix4f[2];
 
@@ -100,10 +100,12 @@ public abstract class RiftApp extends LwjglApp {
     rc.Config.Header.API = OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
     rc.Config.Header.Multisample = 1;
     rc.Config.Header.RTSize = hmdDesc.Resolution;
-    int distortionCaps = OvrLibrary.ovrDistortionCaps.ovrDistortion_Chromatic
-        | OvrLibrary.ovrDistortionCaps.ovrDistortion_TimeWarp | OvrLibrary.ovrDistortionCaps.ovrDistortion_Vignette;
+    int distortionCaps = 
+        OvrLibrary.ovrDistortionCaps.ovrDistortion_Chromatic | 
+        OvrLibrary.ovrDistortionCaps.ovrDistortion_TimeWarp | 
+        OvrLibrary.ovrDistortionCaps.ovrDistortion_Vignette;
     int renderCaps = 0;
-    if (0 == hmd.configureRendering(rc.Config, distortionCaps, renderCaps, eyeDescs, eyeRenderDescs)) {
+    if (0 == hmd.configureRendering(rc.Config, renderCaps, distortionCaps, eyeDescs, eyeRenderDescs)) {
       throw new IllegalStateException("Unable to configure rendering");
     }
   }
@@ -114,25 +116,23 @@ public abstract class RiftApp extends LwjglApp {
     glClear(GL_COLOR_BUFFER_BIT);
     hmd.beginFrame(++frameCount);
     for (int eye = 0; eye < 2; ++eye) {
+      currentEye = eye;
       MatrixStack.PROJECTION.set(projections[eye]);
       Posef.ByValue pose = hmd.beginEyeRender(eye);
       MatrixStack m = MatrixStack.MODELVIEW;
-      m.push();
-      {
-        m.preTranslate(pose.Position.toVector3f().mult(-1));
+      m.withPush(()->{
+//      m.preTranslate(pose.Position.toVector3f().mult(-1));
         m.preRotate(pose.Orientation.toQuaternion().inverse());
-        float eyeOffset = (eye == 0 ? 1.0f : -1.0f) * (ipd / 2.0f);
+        float eyeOffset = (currentEye == 0 ? 1.0f : -1.0f) * (ipd / 2.0f);
         m.preTranslate(eyeOffset);
-        frameBuffers[eye].activate();
+        frameBuffers[currentEye].activate();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderScene();
-        frameBuffers[eye].deactivate();
-      }
-      ;
-      m.pop();
+        frameBuffers[currentEye].deactivate();
+        
+      });
       hmd.endEyeRender(eye, pose, eyeTextures[eye]);
     }
-    ;
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     hmd.endFrame();

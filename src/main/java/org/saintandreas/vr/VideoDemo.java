@@ -44,11 +44,11 @@ public class VideoDemo extends RiftApp implements BufferFormatCallback, RenderCa
   // private static final String MEDIA_URL = "http://192.168.0.4/sc2a.mp4";
   // private static final String MEDIA_URL =
   // "http://192.168.0.4/Videos/South.Park.S17E09.HDTV.x264-ASAP.%5bVTV%5d.mp4";
-  // private static final String MEDIA_URL =
-  // "http://192.168.0.4/Download/Gravity.2013.1080p%203D.HDTV.x264.DTS-RARBG/Gravity.2013.1080p%203D.HDTV.x264.DTS-RARBG.mkv";
+   private static final String MEDIA_URL =
+   "http://192.168.0.4/Videos/3D/Gravity.2013.1080p%203D.HDTV.x264.DTS-RARBG.mkv";
   // private static final String MEDIA_URL =
   // "http://192.168.0.4/Videos/3D/TRON%20LEGACY%203D.mkv";
-  private static final String MEDIA_URL = "http://192.168.0.4/Videos/3D/Man.Of.Steel.3D.2013.1080p.BluRay.Half-OU.DTS.x264-PublicHD.mkv";
+//  private static final String MEDIA_URL = "http://192.168.0.4/Videos/3D/Man.Of.Steel.3D.2013.1080p.BluRay.Half-OU.DTS.x264-PublicHD.mkv";
   private static final Logger LOG = LoggerFactory.getLogger(VideoDemo.class);
   IndexedGeometry cubeGeometry;
   IndexedGeometry eyeMeshes[] = new IndexedGeometry[2];
@@ -62,6 +62,7 @@ public class VideoDemo extends RiftApp implements BufferFormatCallback, RenderCa
   volatile boolean newFrame = false;
   int videoWidth, videoHeight;
   private float videoAspect;
+  private boolean swap = false;
 
   public VideoDemo() {
     // Rift applications should have no window decroation
@@ -130,7 +131,13 @@ public class VideoDemo extends RiftApp implements BufferFormatCallback, RenderCa
     }
     // get event key here
     while (Keyboard.next()) {
+      if (!Keyboard.getEventKeyState()) {
+        continue;
+      }
       switch (Keyboard.getEventKey()) {
+      case Keyboard.KEY_S:
+        swap = !swap;
+        break;
       case Keyboard.KEY_LEFT:
         player.setTime(player.getTime() - 30 * 1000);
         break;
@@ -367,24 +374,26 @@ public class VideoDemo extends RiftApp implements BufferFormatCallback, RenderCa
       float scale = 1.8f;
       float eyeAspect = aspect / 2f;
       float x = scale;
-      float y = scale / (videoAspect / eyeAspect);
+      float y = scale / (videoAspect);
       float z = -0.8f;
       float texOffset = 0;
-      if (getCurrentEye() != 0) {
+      if (swap == (getCurrentEye() == 0)) {
         texOffset = 0.5f;
+      } else {
+        texOffset = 0;
       }
 
       MatrixStack.bindAllGl();
       glEnable(GL_TEXTURE_2D);
       videoTexture.bind();
       glBegin(GL_TRIANGLE_STRIP);
-      glTexCoord2f(0, texOffset + 0.5f);
+      glTexCoord2f(texOffset, 1);
       glVertex3f(-x, -y, z);
-      glTexCoord2f(1, texOffset + 0.5f);
+      glTexCoord2f(texOffset + 0.5f, 1);
       glVertex3f(x, -y, z);
-      glTexCoord2f(0, texOffset);
+      glTexCoord2f(texOffset, 0);
       glVertex3f(-x, y, z);
-      glTexCoord2f(1, texOffset);
+      glTexCoord2f(texOffset + 0.5f, 0);
       glVertex3f(x, y, z);
       glEnd();
 //      MatrixStack.MODELVIEW.scale(new Vector3f(x, y, 1));

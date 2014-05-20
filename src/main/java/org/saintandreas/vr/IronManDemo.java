@@ -34,7 +34,6 @@ import org.saintandreas.gl.shaders.Attribute;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.gl.textures.Texture;
 import org.saintandreas.math.Matrix4f;
-import org.saintandreas.math.Quaternion;
 import org.saintandreas.math.Vector3f;
 import org.saintandreas.math.Vector4f;
 import org.saintandreas.resources.BasicResource;
@@ -46,23 +45,34 @@ import org.saintandreas.worldwind.WorldWindUtils;
 
 import com.google.common.collect.Lists;
 
+
 public class IronManDemo extends RiftApp {
 //  private static final LatLon HOME = LatLon.fromDegrees(51.4682715,0.0107339);
   private static final LatLon HOME = LatLon.fromDegrees(47.5391123, -122.2775141);
   private static final int RESOLUTION = 512;
   private static final long MAX_FLIGHT_AGE = 1000 * 15;
+  private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
+  private static final double MAX_DISTANCE = 30000;
 
   private RootNode root = new RootNode();
+  private Matrix4f camera = new Matrix4f();
   private double currentElevation = 0;
   private long flightUpdateTime = 0;
   private IndexedGeometry terrainGeometry;
   private List<Flight> flights = Lists.newArrayList();
-  private Measure<Length> radius = Measure.valueOf(20, KILOMETER);
+  private final List<Vector3f> flightPositions = Lists.newArrayList();
+  private Measure<Length> radius = Measure.valueOf(100, KILOMETER);
   private List<Path2D> water = Lists.newArrayList();
   
+  private static final String SHAPE_FILES[] = new String[] {
+  // "F:/Downloads/wash/temp.shp",
+  // "C:/Users/bdavis/Git/ShapeFileReader/testdata/freeworld/10m-coastline/10m_coastline.shp"
+//  "F:/Downloads/water10/temp.shp", 
+  "F:/Downloads/coast/COAST.shp",
+  };
+
   
   protected void updateTerrainGeometry(LatLon center) {
-    
 //    System.out.println(SHAPES.size());
 //    List<Path2D> neededShapes = new ArrayList<>();
 //    Sector s = Sector.boundingSector(WorldWindUtils.GLOBE, HOME, Measure.valueOf(km, SI.KILOMETER).doubleValue(SI.METER));
@@ -132,7 +142,6 @@ public class IronManDemo extends RiftApp {
         new SceneNode(() -> {
           terrainGeometry.bindVertexArray();
         }, () -> {
-          glPointSize(2.5f);
           terrainGeometry.draw();
         }, () -> {
           VertexArray.unbind();
@@ -141,6 +150,7 @@ public class IronManDemo extends RiftApp {
 
   protected SceneNode getAircraftNode() {
     Program program = new Program(ExampleResource.SHADERS_SIMPLE_VS, ExampleResource.SHADERS_COLORED_FS);
+    program.link();
     Texture planeTexture;
     try {
       planeTexture = Texture.loadImage(new File("F:/downloads/1397548707_plane.png").toURI().toURL());
@@ -150,38 +160,86 @@ public class IronManDemo extends RiftApp {
     VertexBuffer vb = OpenGL.toVertexBuffer(Lists.newArrayList(new Vector4f(0, 0, 0, 1)));
     Geometry geometry = new Geometry.Builder(vb, 1).withDrawType(GL_POINTS).withAttribute(Attribute.POSITION).build();
     return new SceneNode(()->{
-    Program.clear();
-  },()->{
-    planeTexture.bind();
-    glEnable(GL_POINT_SPRITE);
-    glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
-    double maxDistance = 30000;
-    MatrixStack.MODELVIEW.withPush((mv) -> {
-//      mv.translate(new Vector3f(0, (float) -currentElevation * 100, 0));
-
-    List<Flight> flights = this.flights;
-      for (Flight flight : flights) {
-        double distance = WorldWindUtils.distance(flight.location, HOME);
-        if (distance < maxDistance) {
-          double size = 1 - (distance / maxDistance);
-          size *= 10;
-          size += 1;
-          glPointSize((float)size);
-            Vector3f position = WorldWindUtils.relative(flight.location, HOME, flight.altitude.doubleValue(SI.METER));
-            Vector3f offset = flight.getOffset();
-            glUseProgram(0);
-            MatrixStack.bindAllGl();
-            glBegin(GL_POINTS);
-              glVertex3f(-position.x + offset.x, position.z + offset.y, position.y + offset.z);
-            glEnd();
-            glBegin(GL_LINES);
-              glVertex3f(-position.x + offset.x, position.z + offset.y, position.y + offset.z);
-              glVertex3f(-position.x + offset.x, 0, position.y + offset.z);
-            glEnd();
-        }
+      Program.clear();
+      planeTexture.bind();
+      glEnable(GL_POINT_SPRITE);
+      glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+      program.use();
+      program.setUniform("Color", new Vector4f(1, 1, 1, 1));
+      geometry.bindVertexArray();
+      for (Vector3f position : flightPositions) {
+        double distance = position.length();
+        double size = 1 - (distance / MAX_DISTANCE);
+        size *= 10;
+        size += 1;
+        glPointSize((float)size);
+        MatrixStack.MODELVIEW.withPush((mv) -> {
+          mv.translate(position);
+          MatrixStack.bindAll(program);
+          geometry.draw();
+        });
       }
+      VertexArray.unbind();
+      Program.clear();
+      MatrixStack.MODELVIEW.withPush((mv) -> {
+        MatrixStack.bindAllGl();
+        for (Vector3f position : flightPositions) {
+          glBegin(GL_LINES);
+            glVertex3f(position.x, position.y, position.z);
+            glVertex3f(position.x, 0, position.z);
+          glEnd();
+        }
+      });
     });
-  }, ()->{});
+  }
+
+  public static void vertex(Vector3f v) {
+    glVertex3f(v.x, v.y, v.z);
+  }
+  
+  protected SceneNode getAircraftDetailNode() {
+    return new SceneNode(()->{
+      MatrixStack mv = MatrixStack.MODELVIEW;
+      Vector3f eyeDirection;
+      Vector3f eyePosition = camera.toTranslationVector();
+      {
+        eyeDirection = mv.getRotation().inverse().mult(Vector3f.UNIT_Z.mult(-1));
+      }
+      Program.clear();
+      mv.withPush(() -> {
+//        mv.identity();
+        mv.bindGl();
+        glPointSize(20);
+        glDisable(GL_DEPTH_TEST);
+
+        glBegin(GL_LINES);
+        vertex(eyePosition);
+        vertex(eyePosition.add(eyeDirection));
+        for (Vector3f position : flightPositions) {
+            vertex(eyePosition);
+            vertex(position);
+        }
+        glEnd();
+
+        glBegin(GL_POINTS);
+          glColor3f(1, 1, 1);
+          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z);
+          glColor3f(0, 0, 1);
+          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z + 1);
+          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z - 1);
+          glColor3f(0, 1, 0);
+          glVertex3f(eyePosition.x, eyePosition.y - 1, eyePosition.z);
+          glVertex3f(eyePosition.x, eyePosition.y + 1, eyePosition.z);
+          glColor3f(1, 0, 0);
+          glVertex3f(eyePosition.x - 1, eyePosition.y, eyePosition.z);
+          glVertex3f(eyePosition.x + 1, eyePosition.y, eyePosition.z);
+          glColor3f(1, 1, 1);
+          glColor3f(1, 0, 0);
+          glVertex3f(0, 0, 0);
+        glEnd();
+      });
+      MatrixStack.bindAllGl();
+    });
   }
 
   @Override
@@ -193,9 +251,9 @@ public class IronManDemo extends RiftApp {
 
     root.addChild(getTerrainNode());
     root.addChild(getAircraftNode());
+    root.addChild(getAircraftDetailNode());
   }
 
-  private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
   @Override
   protected void update() {
     if (MAX_FLIGHT_AGE < (System.currentTimeMillis() - flightUpdateTime)) {
@@ -211,30 +269,42 @@ public class IronManDemo extends RiftApp {
           hmd.resetSensor();
           break;
 
-        case Keyboard.KEY_UP:
-          radius = Measure.valueOf(radius.floatValue(KILOMETER) * 1.5f, KILOMETER);
+        case Keyboard.KEY_PERIOD:
           updateTerrainGeometry(HOME);
           break;
 
-        case Keyboard.KEY_DOWN:
-          radius = Measure.valueOf(radius.floatValue(KILOMETER) / 1.5f, KILOMETER);
-          updateTerrainGeometry(HOME);
-          break;
+//        case Keyboard.KEY_UP:
+//          radius = Measure.valueOf(radius.floatValue(KILOMETER) * 1.5f, KILOMETER);
+//          updateTerrainGeometry(HOME);
+//          break;
+//
+//        case Keyboard.KEY_DOWN:
+//          radius = Measure.valueOf(radius.floatValue(KILOMETER) / 1.5f, KILOMETER);
+//          updateTerrainGeometry(HOME);
+//          break;
         }
       }
+
+      List<Flight> flights = this.flights;
+      flightPositions.clear();
+      for (Flight flight : flights) {
+        double distance = WorldWindUtils.distance(flight.location, HOME);
+        if (distance < MAX_DISTANCE) {
+          Vector3f position = WorldWindUtils.relative(flight.location, HOME, flight.altitude.doubleValue(SI.METER));
+          Vector3f offset = flight.getOffset();
+          Vector3f pos = new Vector3f(-position.x + offset.x, position.z + offset.y, position.y + offset.z);
+          flightPositions.add(pos);
+        }
+      }
+      
     }
 
-//    for (int eye = 0; eye < 2; ++eye) {
-//      EyeRenderDesc erd = eyeRenderDescs[eye];
-//      // projections[eye] = new
-//      // Matrix4f(OVR.ovrMatrix4f_Projection(erd.Desc.Fov, 0.1f, 1000000f,
-//      // (byte) 1).M).transpose();
-//    }
-
-    Quaternion q = hmd.getSensorState(OVR.ovr_GetTimeInSeconds()).Predicted.Pose.Orientation.toQuaternion();
-    Matrix4f m = new Matrix4f();// .rotate(q);
-    MatrixStack.MODELVIEW.identity().preMultiply(m.invert())
-        .translate(new Vector3f(0, (float) -currentElevation * radius.floatValue(KILOMETER), 0));
+    Vector3f eye = new Vector3f(0, (float) currentElevation * radius.floatValue(KILOMETER) / 2.0f, 0);
+    MatrixStack.MODELVIEW.lookat(eye, eye.add(Vector3f.UNIT_Z.mult(-1)), Vector3f.UNIT_Y);
+    camera = MatrixStack.MODELVIEW.getTransform().invert();
+//    MatrixStack.MODELVIEW.identity().translate(new Vector3f(0, (float) -currentElevation * radius.floatValue(KILOMETER) / 2.0f, 0));
+//    MatrixStack.MODELVIEW.getTransform().invert();
+    MatrixStack.bindAllGl();
   }
 
   @Override
@@ -246,13 +316,6 @@ public class IronManDemo extends RiftApp {
     glPointSize(1.5f);
     root.render();
   }
-
-  private static final String SHAPE_FILES[] = new String[] {
-  // "F:/Downloads/wash/temp.shp",
-  // "C:/Users/bdavis/Git/ShapeFileReader/testdata/freeworld/10m-coastline/10m_coastline.shp"
-//  "F:/Downloads/water10/temp.shp", 
-  "F:/Downloads/coast/COAST.shp",
-  };
 
   public IronManDemo() throws FileNotFoundException, IOException {
 //    ValidationPreferences vp = new ValidationPreferences();
