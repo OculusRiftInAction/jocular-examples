@@ -10,13 +10,10 @@ import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.math.Vector3f;
 import org.saintandreas.vr.oculus.RiftApp;
 
-import com.oculusvr.capi.OvrLibrary;
-
 public class RiftDemo extends RiftApp {
 
   private Program program;
   private IndexedGeometry geometry;
-  private float ipd = OvrLibrary.OVR_DEFAULT_IPD;
 
 
   @Override
