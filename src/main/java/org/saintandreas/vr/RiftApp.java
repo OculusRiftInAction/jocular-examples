@@ -1,4 +1,4 @@
-package org.saintandreas.vr.oculus;
+package org.saintandreas.vr;
 
 import static org.lwjgl.opengl.GL11.*;
 
@@ -100,7 +100,7 @@ public abstract class RiftApp extends LwjglApp {
     int distortionCaps = OvrLibrary.ovrDistortionCaps.ovrDistortion_Chromatic
         | OvrLibrary.ovrDistortionCaps.ovrDistortion_TimeWarp | OvrLibrary.ovrDistortionCaps.ovrDistortion_Vignette;
     int renderCaps = 0;
-    if (0 == hmd.configureRendering(rc.Config, distortionCaps, renderCaps, eyeDescs, eyeRenderDescs)) {
+    if (0 == hmd.configureRendering(rc.Config, renderCaps, distortionCaps, eyeDescs, eyeRenderDescs)) {
       throw new IllegalStateException("Unable to configure rendering");
     }
   }
