@@ -8,8 +8,6 @@ import org.saintandreas.gl.FrameBuffer;
 import org.saintandreas.gl.MatrixStack;
 import org.saintandreas.gl.app.LwjglApp;
 import org.saintandreas.math.Matrix4f;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.oculusvr.capi.EyeDesc;
 import com.oculusvr.capi.EyeRenderDesc;
@@ -25,19 +23,17 @@ import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.Vector2i;
 
 public abstract class RiftApp extends LwjglApp {
-  @SuppressWarnings("unused")
-  private static final Logger LOG = LoggerFactory.getLogger(RiftApp.class);
-  protected static final OvrLibrary OVR = OvrLibrary.INSTANCE;
-  protected float ipd = OvrLibrary.OVR_DEFAULT_IPD;
-  protected EyeRenderDesc eyeRenderDescs[] = (EyeRenderDesc[]) new EyeRenderDesc().toArray(2);
-  private Texture eyeTextures[] = (Texture[]) new Texture().toArray(2);
-  protected final ovrHmd hmd;
-  protected final HmdDesc hmdDesc;
-  private int currentEye;
+  private static final OvrLibrary OVR = OvrLibrary.INSTANCE;
+  private final ovrHmd hmd;
+  private final HmdDesc hmdDesc;
 
-  private int frameCount = -1;
+  private EyeRenderDesc eyeRenderDescs[] = (EyeRenderDesc[]) new EyeRenderDesc().toArray(2);
+  private Texture eyeTextures[] = (Texture[]) new Texture().toArray(2);
   private FrameBuffer frameBuffers[] = new FrameBuffer[2];
-  protected Matrix4f projections[] = new Matrix4f[2];
+  private int frameCount = -1;
+  private Matrix4f projections[] = new Matrix4f[2];
+
+  protected float ipd = OvrLibrary.OVR_DEFAULT_IPD;
 
   public RiftApp() {
     OVR.ovr_Initialize();
@@ -50,8 +46,10 @@ public abstract class RiftApp extends LwjglApp {
     }
     this.hmd = hmd;
     hmdDesc = hmd.getDesc();
-    hmd.startSensor(0, 0);
-    ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, OvrLibrary.OVR_DEFAULT_IPD);
+    ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, ipd);
+    if (0 == hmd.startSensor(0, 0)) {
+      throw new IllegalStateException("Unable to start the sensor");
+    }
   }
 
   @Override
@@ -59,39 +57,38 @@ public abstract class RiftApp extends LwjglApp {
     super.initGl();
 
     EyeDesc eyeDescs[] = (EyeDesc[]) new EyeDesc().toArray(2);
-    for (int eye = 0; eye < 2; ++eye) {
-      currentEye = eye;
-      EyeDesc eyeDesc = eyeDescs[eye];
-      eyeDesc.Eye = eye;
+    for (int currentEye = 0; currentEye < 2; ++currentEye) {
+      EyeDesc eyeDesc = eyeDescs[currentEye];
+      eyeDesc.Eye = currentEye;
       {
         FovPort.ByValue fovPort = new FovPort.ByValue();
-        fovPort.DownTan = hmdDesc.DefaultEyeFov[eye].DownTan;
-        fovPort.UpTan = hmdDesc.DefaultEyeFov[eye].UpTan;
-        fovPort.LeftTan = hmdDesc.DefaultEyeFov[eye].LeftTan;
-        fovPort.RightTan = hmdDesc.DefaultEyeFov[eye].RightTan;
-        projections[eye] = new Matrix4f(OVR.ovrMatrix4f_Projection(fovPort, 0.1f, 1000000f, (byte) 1).M).transpose();
+        fovPort.DownTan = hmdDesc.DefaultEyeFov[currentEye].DownTan;
+        fovPort.UpTan = hmdDesc.DefaultEyeFov[currentEye].UpTan;
+        fovPort.LeftTan = hmdDesc.DefaultEyeFov[currentEye].LeftTan;
+        fovPort.RightTan = hmdDesc.DefaultEyeFov[currentEye].RightTan;
+        projections[currentEye] = new Matrix4f(OVR.ovrMatrix4f_Projection(fovPort, 0.1f, 1000000f, (byte) 1).M).transpose();
         eyeDesc.Fov = fovPort;
-        eyeDesc.TextureSize = hmd.getFovTextureSize(eye, fovPort, 1.0f);
+        eyeDesc.TextureSize = hmd.getFovTextureSize(currentEye, fovPort, 1.0f);
       }
 
       eyeDesc.RenderViewport.Size = eyeDesc.TextureSize;
       eyeDesc.RenderViewport.Pos = new Vector2i(0, 0);
 
-      frameBuffers[eye] = new FrameBuffer(eyeDesc.TextureSize.w, eyeDesc.TextureSize.h);
+      frameBuffers[currentEye] = new FrameBuffer(eyeDesc.TextureSize.w, eyeDesc.TextureSize.h);
 
       // JNA weirdness to deal with the union type.
       {
         // Create the GLTextureData type pointing to the same memory as the
         // eyeTexture
-        GLTextureData eyeTexture = new GLTextureData(eyeTextures[eye].getPointer());
+        GLTextureData eyeTexture = new GLTextureData(eyeTextures[currentEye].getPointer());
         eyeTexture.Header.API = OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
         eyeTexture.Header.RenderViewport = eyeDesc.RenderViewport;
         eyeTexture.Header.TextureSize = eyeDesc.TextureSize;
-        eyeTexture.TexId = frameBuffers[eye].getTexture().id;
+        eyeTexture.TexId = frameBuffers[currentEye].getTexture().id;
         // Write out the structure to native memory
         eyeTexture.write();
         // Read it back into the other type
-        eyeTextures[eye].read();
+        eyeTextures[currentEye].read();
       }
     }
 
@@ -113,26 +110,24 @@ public abstract class RiftApp extends LwjglApp {
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);
     hmd.beginFrame(++frameCount);
-    for (int eye = 0; eye < 2; ++eye) {
-      MatrixStack.PROJECTION.set(projections[eye]);
-      Posef.ByValue pose = hmd.beginEyeRender(eye);
+    for (int currentEye = 0; currentEye < 2; ++currentEye) {
+      MatrixStack.PROJECTION.set(projections[currentEye]);
+      Posef.ByValue pose = hmd.beginEyeRender(currentEye);
       MatrixStack m = MatrixStack.MODELVIEW;
       m.push();
       {
         m.preTranslate(pose.Position.toVector3f().mult(-1));
         m.preRotate(pose.Orientation.toQuaternion().inverse());
-        float eyeOffset = (eye == 0 ? 1.0f : -1.0f) * (ipd / 2.0f);
+        float eyeOffset = (currentEye == 0 ? 1.0f : -1.0f) * (ipd / 2.0f);
         m.preTranslate(eyeOffset);
-        frameBuffers[eye].activate();
+        frameBuffers[currentEye].activate();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderScene();
-        frameBuffers[eye].deactivate();
+        frameBuffers[currentEye].deactivate();
       }
-      ;
       m.pop();
-      hmd.endEyeRender(eye, pose, eyeTextures[eye]);
+      hmd.endEyeRender(currentEye, pose, eyeTextures[currentEye]);
     }
-    ;
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     hmd.endFrame();
@@ -152,8 +147,4 @@ public abstract class RiftApp extends LwjglApp {
   }
 
   protected abstract void renderScene();
-
-  public int getCurrentEye() {
-    return currentEye;
-  }
 }
