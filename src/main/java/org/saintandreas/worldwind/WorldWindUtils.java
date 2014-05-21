@@ -72,7 +72,7 @@ public class WorldWindUtils {
     return GLOBE.getElevation(center.latitude, center.longitude);
   }
 
-  public static List<Vector3f> fetchElevations(LatLon center, int res, Measure<Length> radius) {
+  public static List<Vector3f> fetchElevations(LatLon center, int res, Measure<Float, Length> radius) {
     Sector s = Sector.boundingSector(GLOBE, center, radius.doubleValue(SI.METER));
     List<LatLon> lv = getLatLongs(s, res);
     double resolutionRadians = s.getDeltaLat().radians / res;

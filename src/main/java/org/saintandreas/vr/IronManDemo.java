@@ -61,7 +61,7 @@ public class IronManDemo extends RiftApp {
   private IndexedGeometry terrainGeometry;
   private List<Flight> flights = Lists.newArrayList();
   private final List<Vector3f> flightPositions = Lists.newArrayList();
-  private Measure<Length> radius = Measure.valueOf(100, KILOMETER);
+  private Measure<Float, Length> radius = Measure.valueOf(100.0f, KILOMETER);
   private List<Path2D> water = Lists.newArrayList();
   
   private static final String SHAPE_FILES[] = new String[] {

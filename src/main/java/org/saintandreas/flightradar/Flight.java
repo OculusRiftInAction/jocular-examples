@@ -12,6 +12,7 @@ import javax.measure.quantity.Length;
 import javax.measure.quantity.Velocity;
 import javax.measure.unit.NonSI;
 import javax.measure.unit.SI;
+import javax.measure.unit.Unit;
 
 import org.joda.time.DateTime;
 import org.saintandreas.HttpUtil;
@@ -24,14 +25,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class Flight {
   public final String registration;
   public final LatLon location;
-  public final Measure<Angle> bearing;
-  public final Measure<Length> altitude;
-  public final Measure<Velocity> velocity;
+  public final Measure<Float, Angle> bearing;
+  public final Measure<Float, Length> altitude;
+  public final Measure<Float, Velocity> velocity;
   public final String squawk;
   public final String aircraft;
   public final String registration2;
   public final DateTime time;
-  public final Measure<Velocity> verticalVelocity;
+  public final Measure<Float, Velocity> verticalVelocity;
+  private static final Unit<Velocity> FEET_PER_SECOND = 
+      (Unit<Velocity>) Velocity.UNIT.times(NonSI.FOOT.divide(SI.METER));
 
   public Flight(JsonNode node) {
     assert (node.isArray());
@@ -41,13 +44,13 @@ public class Flight {
     // 3 bearing 359,
     registration = node.get(0).asText();
     location = LatLon.fromDegrees(node.get(1).asDouble(), node.get(2).asDouble());
-    bearing = Measure.valueOf(node.get(3).asInt(), NonSI.DEGREE_ANGLE);
+    bearing = Measure.valueOf(node.get(3).floatValue(), NonSI.DEGREE_ANGLE);
     // 4 altitude 1250,
     // 5 speed 142,
     // 15 vertical speed -768,
-    altitude = Measure.valueOf(node.get(4).asInt(), NonSI.FOOT);
-    velocity = Measure.valueOf(node.get(5).asInt(), NonSI.KNOT);
-    verticalVelocity = Measure.valueOf(node.get(15).asInt(), NonSI.FOOT_PER_SECOND);
+    altitude = Measure.valueOf(node.get(4).floatValue(), NonSI.FOOT);
+    velocity = Measure.valueOf(node.get(5).floatValue(), NonSI.KNOT);
+    verticalVelocity = Measure.valueOf(node.get(15).floatValue(), FEET_PER_SECOND);
     // 6 squawk: "1373",
     squawk = node.get(6).asText();
     // 8 aircraft "B744",
