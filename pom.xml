@@ -34,7 +34,7 @@
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>jocular</artifactId>
-      <version>[2.0.2, 3)</version>
+      <version>[2.0.3, 3)</version>
     </dependency>
   </dependencies>
   <build>
