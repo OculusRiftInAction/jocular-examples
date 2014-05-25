@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL11.*;
 
 import java.awt.Rectangle;
 
+import org.lwjgl.opengl.ContextAttribs;
 import org.saintandreas.gl.FrameBuffer;
 import org.saintandreas.gl.MatrixStack;
 import org.saintandreas.gl.OpenGL;
@@ -44,6 +45,8 @@ public abstract class RiftApp extends LwjglApp {
   }
 
   public RiftApp() {
+    super();
+
     OvrLibrary.INSTANCE.ovr_Initialize();
 
     hmd = openFirstHmd();
@@ -65,6 +68,10 @@ public abstract class RiftApp extends LwjglApp {
 
   @Override
   protected final void setupDisplay() {
+    pixelFormat = pixelFormat.withSamples(4).withDepthBits(16);
+    contextAttributes = new ContextAttribs(4, 4)
+    .withForwardCompatible(true)
+    .withProfileCore(true).withDebug(true);
     System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
     Rectangle targetRect = new Rectangle(
         hmdDesc.WindowsPos.x, hmdDesc.WindowsPos.y, 
@@ -90,7 +97,7 @@ public abstract class RiftApp extends LwjglApp {
         fovPort.RightTan = defaultEyeFov.RightTan;
         projections[eye] = RiftUtils.toMatrix4f(
             OvrLibrary.INSTANCE.ovrMatrix4f_Projection(
-                fovPort, 0.1f, 1000000f, (byte) 1));
+                fovPort, 0.1f, 10000f, (byte) 1));
 
         TextureHeader eth = eyeTextures[eye].Header;
         eth.TextureSize = hmd.getFovTextureSize(eye, fovPort, 1.0f);

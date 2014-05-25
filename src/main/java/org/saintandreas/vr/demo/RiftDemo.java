@@ -1,6 +1,7 @@
 package org.saintandreas.vr.demo;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL31.*;
 import static org.saintandreas.ExampleResource.*;
 
 import org.saintandreas.ExampleResource;
@@ -42,6 +43,9 @@ public class RiftDemo extends RiftApp {
   @Override
   protected void initGl() {
     super.initGl();
+    glPrimitiveRestartIndex(Short.MAX_VALUE);
+    glEnable(GL_PRIMITIVE_RESTART);
+
     MatrixStack.MODELVIEW.lookat(Vector3f.ZERO, // eye position
         Vector3f.UNIT_Z.mult(-1), // origin of the scene
         Vector3f.UNIT_Y); // up direction
@@ -60,8 +64,8 @@ public class RiftDemo extends RiftApp {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     cubeGeometry.bindVertexArray();
-
     MatrixStack mv = MatrixStack.MODELVIEW;
+
     mv.push();
     {
       Quaternion q = mv.getRotation();
@@ -70,7 +74,9 @@ public class RiftDemo extends RiftApp {
       MatrixStack.bindAll(skyboxProgram);
       glCullFace(GL_FRONT);
       skybox.bind();
+    glDisable(GL_DEPTH_TEST);
       cubeGeometry.draw();
+    glEnable(GL_DEPTH_TEST);
       skybox.unbind();
       glCullFace(GL_BACK);
     }
@@ -80,7 +86,7 @@ public class RiftDemo extends RiftApp {
     MatrixStack.PROJECTION.bind(cubeProgram);
     cubeGeometry.bindVertexArray();
     for (Vector3f axis : AXES) {
-      Vector3f offset = axis.mult(ipd * 5);
+      Vector3f offset = axis.mult(ipd * 8);
       mv.push().translate(offset).scale(ipd).bind(cubeProgram).pop();
       cubeGeometry.draw();
       mv.push().translate(offset.mult(-1)).scale(ipd).bind(cubeProgram).pop();
