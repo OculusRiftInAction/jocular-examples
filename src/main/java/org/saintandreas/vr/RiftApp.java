@@ -6,21 +6,21 @@ import java.awt.Rectangle;
 
 import org.saintandreas.gl.FrameBuffer;
 import org.saintandreas.gl.MatrixStack;
+import org.saintandreas.gl.OpenGL;
 import org.saintandreas.gl.app.LwjglApp;
+import org.saintandreas.gl.buffers.VertexArray;
 import org.saintandreas.math.Matrix4f;
 
-import com.oculusvr.capi.EyeDesc;
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
-import com.oculusvr.capi.GLConfig;
-import com.oculusvr.capi.GLTextureData;
 import com.oculusvr.capi.HmdDesc;
 import com.oculusvr.capi.OvrLibrary;
 import com.oculusvr.capi.OvrLibrary.ovrHmd;
+import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
 import com.oculusvr.capi.Texture;
-import com.oculusvr.capi.Vector2i;
+import com.oculusvr.capi.TextureHeader;
 
 public abstract class RiftApp extends LwjglApp {
   //  private static final OvrLibrary OVR = OvrLibrary.INSTANCE;
@@ -75,64 +75,55 @@ public abstract class RiftApp extends LwjglApp {
   @Override
   protected void initGl() {
     super.initGl();
-
-    EyeDesc eyeDescs[] = (EyeDesc[]) new EyeDesc().toArray(2);
+    OpenGL.checkError();
+    
+    FovPort fovPorts[] = (FovPort[])new FovPort().toArray(2);  
     for (int eye = 0; eye < 2; ++eye) {
-      EyeDesc eyeDesc = eyeDescs[eye];
-      eyeDesc.Eye = eye;
       {
-        FovPort defaultEyeFov = hmdDesc.DefaultEyeFov[eye]; 
         // JNA weirdness 1
+        FovPort defaultEyeFov = hmdDesc.DefaultEyeFov[eye];
+        fovPorts[eye] = defaultEyeFov;
         FovPort.ByValue fovPort = new FovPort.ByValue();
         fovPort.DownTan = defaultEyeFov.DownTan;
         fovPort.UpTan = defaultEyeFov.UpTan;
         fovPort.LeftTan = defaultEyeFov.LeftTan;
         fovPort.RightTan = defaultEyeFov.RightTan;
-        com.oculusvr.capi.Matrix4f.ByValue projection = 
+        projections[eye] = RiftUtils.toMatrix4f(
             OvrLibrary.INSTANCE.ovrMatrix4f_Projection(
-                fovPort, 0.1f, 1000000f, (byte) 1);
-        projections[eye] = new Matrix4f(projection.M).
-            transpose();
-        eyeDesc.Fov = fovPort;
-        eyeDesc.TextureSize = hmd.getFovTextureSize(
-            eye, fovPort, 1.0f);
-      }
+                fovPort, 0.1f, 1000000f, (byte) 1));
 
-      eyeDesc.RenderViewport.Size = eyeDesc.TextureSize;
-      eyeDesc.RenderViewport.Pos = new Vector2i(0, 0);
+        TextureHeader eth = eyeTextures[eye].Header;
+        eth.TextureSize = hmd.getFovTextureSize(eye, fovPort, 1.0f);
+        eth.RenderViewport.Size = eth.TextureSize; 
+        eth.RenderViewport.Pos = new OvrVector2i(0, 0);
+        eth.API = OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
 
-      frameBuffers[eye] = new FrameBuffer(
-          eyeDesc.TextureSize.w, eyeDesc.TextureSize.h);
-
-      // JNA weirdness to deal with the union type.
-      {
-        // Create the GLTextureData type pointing to 
-        // the same memory as the eyeTexture
-        GLTextureData eyeTexture = 
-            new GLTextureData(eyeTextures[eye].getPointer());
-        eyeTexture.Header.API = 
-            OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
-        eyeTexture.Header.RenderViewport = eyeDesc.RenderViewport;
-        eyeTexture.Header.TextureSize = eyeDesc.TextureSize;
-        eyeTexture.TexId = frameBuffers[eye].getTexture().id;
-        eyeTexture.write();
+        frameBuffers[eye] = new FrameBuffer(eth.TextureSize.w, eth.TextureSize.h);
+        eyeTextures[eye].TextureId = frameBuffers[eye].getTexture().id;
       }
     }
 
-    GLConfig rc = new GLConfig();
-    rc.Config = new RenderAPIConfig();
-    rc.Config.Header.API = 
-        OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
-    rc.Config.Header.Multisample = 1;
-    rc.Config.Header.RTSize = hmdDesc.Resolution;
-    int distortionCaps = 
-        OvrLibrary.ovrDistortionCaps.ovrDistortion_Chromatic | 
-        OvrLibrary.ovrDistortionCaps.ovrDistortion_TimeWarp | 
-        OvrLibrary.ovrDistortionCaps.ovrDistortion_Vignette;
-    int renderCaps = 0;
+    
+    RenderAPIConfig rc = new RenderAPIConfig();
+    rc.Header.API = OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
+    rc.Header.RTSize = hmdDesc.Resolution;
+    rc.Header.Multisample = 1;
+    for (int i = 0; i < rc.PlatformData.length; ++i) {
+      rc.PlatformData[i] = 0;
+    }
+    rc.write();
+    int distortionCaps = 0 
+        | OvrLibrary.ovrDistortionCaps.ovrDistortionCap_Chromatic 
+        | OvrLibrary.ovrDistortionCaps.ovrDistortionCap_TimeWarp 
+        | OvrLibrary.ovrDistortionCaps.ovrDistortionCap_Vignette
+        ;
+
+    VertexArray.unbind();
+
     byte configureResult = hmd.configureRendering(
-        rc.Config, renderCaps, distortionCaps, 
-        eyeDescs, eyeRenderDescs); 
+        rc, distortionCaps, fovPorts, eyeRenderDescs);
+    // Glew init sometimes causes a GL erorr, so we clear it out here
+    glGetError();
 
     if (0 == configureResult) {
       throw new IllegalStateException("Unable to configure rendering");
@@ -143,7 +134,8 @@ public abstract class RiftApp extends LwjglApp {
   @Override
   public final void drawFrame() {
     glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(1, 1, 1, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     hmd.beginFrame(++frameCount);
     for (int i = 0; i < 2; ++i) {
       int eye = hmdDesc.EyeRenderOrder[i];
@@ -164,11 +156,8 @@ public abstract class RiftApp extends LwjglApp {
       mv.pop();
       hmd.endEyeRender(eye, pose, eyeTextures[eye]);
     }
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
     hmd.endFrame();
   }
-
 
   protected abstract void renderScene();
 }
