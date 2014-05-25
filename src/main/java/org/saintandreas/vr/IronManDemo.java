@@ -21,6 +21,7 @@ import javax.measure.quantity.Length;
 import javax.measure.unit.SI;
 
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.ContextAttribs;
 import org.saintandreas.ExampleResource;
 import org.saintandreas.Statics;
 import org.saintandreas.flightradar.Flight;
@@ -40,7 +41,6 @@ import org.saintandreas.resources.BasicResource;
 import org.saintandreas.scene.RootNode;
 import org.saintandreas.scene.SceneNode;
 import org.saintandreas.scene.ShaderNode;
-import org.saintandreas.vr.oculus.RiftApp;
 import org.saintandreas.worldwind.WorldWindUtils;
 
 import com.google.common.collect.Lists;
@@ -207,7 +207,6 @@ public class IronManDemo extends RiftApp {
       }
       Program.clear();
       mv.withPush(() -> {
-//        mv.identity();
         mv.bindGl();
         glPointSize(20);
         glDisable(GL_DEPTH_TEST);
@@ -221,25 +220,33 @@ public class IronManDemo extends RiftApp {
         }
         glEnd();
 
-        glBegin(GL_POINTS);
-          glColor3f(1, 1, 1);
-          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z);
-          glColor3f(0, 0, 1);
-          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z + 1);
-          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z - 1);
-          glColor3f(0, 1, 0);
-          glVertex3f(eyePosition.x, eyePosition.y - 1, eyePosition.z);
-          glVertex3f(eyePosition.x, eyePosition.y + 1, eyePosition.z);
-          glColor3f(1, 0, 0);
-          glVertex3f(eyePosition.x - 1, eyePosition.y, eyePosition.z);
-          glVertex3f(eyePosition.x + 1, eyePosition.y, eyePosition.z);
-          glColor3f(1, 1, 1);
-          glColor3f(1, 0, 0);
-          glVertex3f(0, 0, 0);
-        glEnd();
+//        glBegin(GL_POINTS);
+//          glColor3f(1, 1, 1);
+//          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z);
+//          glColor3f(0, 0, 1);
+//          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z + 1);
+//          glVertex3f(eyePosition.x, eyePosition.y, eyePosition.z - 1);
+//          glColor3f(0, 1, 0);
+//          glVertex3f(eyePosition.x, eyePosition.y - 1, eyePosition.z);
+//          glVertex3f(eyePosition.x, eyePosition.y + 1, eyePosition.z);
+//          glColor3f(1, 0, 0);
+//          glVertex3f(eyePosition.x - 1, eyePosition.y, eyePosition.z);
+//          glVertex3f(eyePosition.x + 1, eyePosition.y, eyePosition.z);
+//          glColor3f(1, 1, 1);
+//          glColor3f(1, 0, 0);
+//          glVertex3f(0, 0, 0);
+//        glEnd();
       });
       MatrixStack.bindAllGl();
     });
+  }
+
+  @Override
+  protected void setupContext() {
+    pixelFormat = pixelFormat.withSamples(4).withDepthBits(16);
+    contextAttributes = new ContextAttribs(4, 4)
+    .withForwardCompatible(true).withProfileCompatibility(true)
+    .withDebug(true);
   }
 
   @Override
@@ -284,20 +291,20 @@ public class IronManDemo extends RiftApp {
 //          break;
         }
       }
-
-      List<Flight> flights = this.flights;
-      flightPositions.clear();
-      for (Flight flight : flights) {
-        double distance = WorldWindUtils.distance(flight.location, HOME);
-        if (distance < MAX_DISTANCE) {
-          Vector3f position = WorldWindUtils.relative(flight.location, HOME, flight.altitude.doubleValue(SI.METER));
-          Vector3f offset = flight.getOffset();
-          Vector3f pos = new Vector3f(-position.x + offset.x, position.z + offset.y, position.y + offset.z);
-          flightPositions.add(pos);
-        }
-      }
-      
     }
+
+    List<Flight> flights = this.flights;
+    flightPositions.clear();
+    for (Flight flight : flights) {
+      double distance = WorldWindUtils.distance(flight.location, HOME);
+      if (distance < MAX_DISTANCE) {
+        Vector3f position = WorldWindUtils.relative(flight.location, HOME, flight.altitude.doubleValue(SI.METER));
+        Vector3f offset = flight.getOffset();
+        Vector3f pos = new Vector3f(-position.x + offset.x, position.z + offset.y, position.y + offset.z);
+        flightPositions.add(pos);
+      }
+    }
+    
 
     Vector3f eye = new Vector3f(0, (float) currentElevation * radius.floatValue(KILOMETER) / 2.0f, 0);
     MatrixStack.MODELVIEW.lookat(eye, eye.add(Vector3f.UNIT_Z.mult(-1)), Vector3f.UNIT_Y);

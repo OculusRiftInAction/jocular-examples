@@ -37,11 +37,11 @@ import org.saintandreas.scene.ShaderNode;
 import org.saintandreas.scene.TransformNode;
 import org.saintandreas.spritz.Text;
 import org.saintandreas.spritz.TimedWord;
-import org.saintandreas.vr.oculus.RiftApp;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
+import com.oculusvr.capi.OvrLibrary;
 import com.oculusvr.capi.SensorState;
 
 public class OliverRift extends RiftApp {
@@ -252,9 +252,9 @@ public class OliverRift extends RiftApp {
     }
 
     // sensorFusion.Reset();
-    SensorState sensor = hmd.getSensorState(OVR.ovr_GetTimeInSeconds());
-    current = sensor.Predicted.Pose.Orientation.toQuaternion();
-    angV = sensor.Predicted.AngularVelocity.toVector3f().lengthSquared();
+    SensorState sensor = hmd.getSensorState(OvrLibrary.INSTANCE.ovr_GetTimeInSeconds());
+    current = RiftUtils.toQuaternion(sensor.Predicted.Pose.Orientation);
+    angV = RiftUtils.toVector3f(sensor.Predicted.AngularVelocity).lengthSquared();
     ang = Math.abs(current.angleBetween(forward));
     if (angV > MAX_ANGV) {
       paused = true;

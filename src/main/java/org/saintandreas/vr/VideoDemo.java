@@ -18,7 +18,6 @@ import org.saintandreas.gl.buffers.VertexArray;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.gl.textures.Texture;
 import org.saintandreas.math.Vector3f;
-import org.saintandreas.vr.oculus.RiftApp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
