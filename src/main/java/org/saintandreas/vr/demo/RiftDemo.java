@@ -15,13 +15,16 @@ import org.saintandreas.math.Vector3f;
 import org.saintandreas.resources.Resource;
 import org.saintandreas.vr.RiftApp;
 
-public class RiftDemo extends RiftApp {
+import com.oculusvr.capi.OvrLibrary;
 
+public class RiftDemo extends RiftApp {
   private Program cubeProgram;
   private Program skyboxProgram;
 
   private IndexedGeometry cubeGeometry;
   private Texture skybox;
+  private float ipd = OvrLibrary.OVR_DEFAULT_IPD;
+
 
   // @formatter:off
   private static final Vector3f AXES[] = { 
@@ -40,6 +43,10 @@ public class RiftDemo extends RiftApp {
   };
   // @formatter:on
 
+  public RiftDemo() {
+    ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, ipd);
+  }
+  
   @Override
   protected void initGl() {
     super.initGl();
@@ -74,9 +81,9 @@ public class RiftDemo extends RiftApp {
       MatrixStack.bindAll(skyboxProgram);
       glCullFace(GL_FRONT);
       skybox.bind();
-    glDisable(GL_DEPTH_TEST);
+      glDisable(GL_DEPTH_TEST);
       cubeGeometry.draw();
-    glEnable(GL_DEPTH_TEST);
+      glEnable(GL_DEPTH_TEST);
       skybox.unbind();
       glCullFace(GL_BACK);
     }
