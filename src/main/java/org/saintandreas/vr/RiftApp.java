@@ -18,12 +18,14 @@ import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
 import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
+import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
+import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
+import static com.oculusvr.capi.OvrLibrary.ovrRenderAPIType.*;
 
 public abstract class RiftApp extends LwjglApp {
   protected final Hmd hmd;
   private final HmdDesc hmdDesc;
-  private final EyeRenderDesc eyeRenderDescs[] =
-      (EyeRenderDesc[]) new EyeRenderDesc().toArray(2);
+  private EyeRenderDesc eyeRenderDescs[] = null;
   private final FovPort fovPorts[] =
       (FovPort[])new FovPort().toArray(2);
 
@@ -33,12 +35,12 @@ public abstract class RiftApp extends LwjglApp {
       new FrameBuffer[2];
   private final Matrix4f projections[] =
       new Matrix4f[2];
+  private int frameCount = -1;
 
   private static Hmd openFirstHmd() {
     Hmd hmd = Hmd.create(0);
     if (null == hmd) {
-      hmd = Hmd.createDebug(
-          OvrLibrary.ovrHmdType.ovrHmd_DK1);
+      hmd = Hmd.createDebug(ovrHmd_DK1);
     }
     return hmd;
   }
@@ -63,17 +65,16 @@ public abstract class RiftApp extends LwjglApp {
     for (int eye = 0; eye < 2; ++eye) {
       fovPorts[eye] = hmdDesc.DefaultEyeFov[eye];
       projections[eye] = RiftUtils.toMatrix4f(
-          OvrLibrary.INSTANCE.ovrMatrix4f_Projection(
-              new FovPort.ByValue(fovPorts[eye]), 0.1f, 10000f, (byte) 1));
+          Hmd.getPerspectiveProjection(
+              fovPorts[eye], 0.1f, 1000000f, true));
 
       Texture texture = eyeTextures[eye] = new Texture();
       TextureHeader header = texture.Header;
       header.TextureSize = hmd.getFovTextureSize(
-          eye, new FovPort.ByValue(fovPorts[eye]), 1.0f);
+          eye, fovPorts[eye], 1.0f);
       header.RenderViewport.Size = header.TextureSize; 
       header.RenderViewport.Pos = new OvrVector2i(0, 0);
-      header.API = OvrLibrary.ovrRenderAPIType
-          .ovrRenderAPI_OpenGL;
+      header.API = ovrRenderAPI_OpenGL;
     }
   }
 
@@ -111,35 +112,28 @@ public abstract class RiftApp extends LwjglApp {
     }
     
     RenderAPIConfig rc = new RenderAPIConfig();
-    rc.Header.API = OvrLibrary.ovrRenderAPIType.ovrRenderAPI_OpenGL;
+    rc.Header.API = ovrRenderAPI_OpenGL;
     rc.Header.RTSize = hmdDesc.Resolution;
     rc.Header.Multisample = 1;
 
     int distortionCaps = 
-        OvrLibrary.ovrDistortionCaps
-          .ovrDistortionCap_Chromatic | 
-        OvrLibrary.ovrDistortionCaps
-          .ovrDistortionCap_TimeWarp | 
-          OvrLibrary.ovrDistortionCaps
-          .ovrDistortionCap_NoSwapBuffers | 
-        OvrLibrary.ovrDistortionCaps
-          .ovrDistortionCap_Vignette;
+      ovrDistortionCap_Chromatic | 
+      ovrDistortionCap_TimeWarp | 
+      ovrDistortionCap_NoSwapBuffers | 
+      ovrDistortionCap_Vignette;
 
-    byte configureResult = hmd.configureRendering(
-        rc, distortionCaps, fovPorts, eyeRenderDescs);
-    if (0 == configureResult) {
-      throw new IllegalStateException("Unable to configure rendering");
-    }
+    eyeRenderDescs = hmd.configureRendering(
+        rc, distortionCaps, fovPorts);
   }
 
 
   @Override
   public final void drawFrame() {
-    hmd.beginFrame(0);
+    hmd.beginFrame(++frameCount);
     for (int i = 0; i < 2; ++i) {
       int eye = hmdDesc.EyeRenderOrder[i];
       MatrixStack.PROJECTION.set(projections[eye]);
-      Posef.ByValue pose = hmd.beginEyeRender(eye);
+      Posef pose = hmd.beginEyeRender(eye);
       MatrixStack mv = MatrixStack.MODELVIEW;
       mv.push();
       {
