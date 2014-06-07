@@ -48,7 +48,7 @@ public abstract class RiftApp extends LwjglApp {
   public RiftApp() {
     super();
 
-    Hmd.initialize();
+    OvrLibrary.INSTANCE.ovr_Initialize();
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
