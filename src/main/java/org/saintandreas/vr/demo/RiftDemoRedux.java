@@ -1,5 +1,6 @@
 package org.saintandreas.vr.demo;
 
+import static java.lang.Math.abs;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
@@ -48,11 +49,26 @@ public class RiftDemoRedux extends RiftApp {
   @Override
   public void renderScene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     MatrixStack.PROJECTION.bind(cubeProgram);
+    
+    for (int x = -5; x <= 5; x++) {
+      for (int y = -5; y <= 5; y++) {
+        for (int z = -5; z <= 5; z++) {
+          if (abs(x * y) == 25
+              || abs(y * z) == 25
+              || abs(x * z) == 25
+              || y == -5) {
+            cube(new Vector3f(x, y, z));
+          }
+        }
+      }
+    }
+  }
+  
+  private void cube(Vector3f pos) {
     MatrixStack.MODELVIEW
         .push()
-        .translate(new Vector3f(0, 0, -5))
+        .translate(pos)
         .bind(cubeProgram)
         .pop();
     cubeGeometry.draw();
