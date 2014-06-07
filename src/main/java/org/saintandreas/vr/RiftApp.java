@@ -1,5 +1,9 @@
 package org.saintandreas.vr;
 
+import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
+import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
+import static com.oculusvr.capi.OvrLibrary.ovrSensorCaps.*;
+
 import java.awt.Rectangle;
 
 import org.lwjgl.opengl.ContextAttribs;
@@ -10,17 +14,13 @@ import org.saintandreas.math.Matrix4f;
 
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
+import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.HmdDesc;
-import com.oculusvr.capi.OvrLibrary;
-import com.oculusvr.capi.OvrLibrary.Hmd;
 import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
 import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
-import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
-import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
-import static com.oculusvr.capi.OvrLibrary.ovrRenderAPIType.*;
 
 public abstract class RiftApp extends LwjglApp {
   protected final Hmd hmd;
@@ -28,7 +28,6 @@ public abstract class RiftApp extends LwjglApp {
   private EyeRenderDesc eyeRenderDescs[] = null;
   private final FovPort fovPorts[] =
       (FovPort[])new FovPort().toArray(2);
-
   private final Texture eyeTextures[] =
       new Texture[2];
   private final FrameBuffer frameBuffers[] =
@@ -48,7 +47,12 @@ public abstract class RiftApp extends LwjglApp {
   public RiftApp() {
     super();
 
-    OvrLibrary.INSTANCE.ovr_Initialize();
+    Hmd.initialize();
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      throw new IllegalStateException(e);
+    }
 
     hmd = openFirstHmd();
     if (null == hmd) {
@@ -57,7 +61,8 @@ public abstract class RiftApp extends LwjglApp {
     }
 
     hmdDesc = hmd.getDesc();
-    if (0 == hmd.startSensor(0, 0)) {
+    if (0 == hmd.startSensor(
+        ovrSensorCap_Orientation, 0)) {
       throw new IllegalStateException(
           "Unable to start the sensor");
     }
@@ -74,7 +79,6 @@ public abstract class RiftApp extends LwjglApp {
           eye, fovPorts[eye], 1.0f);
       header.RenderViewport.Size = header.TextureSize; 
       header.RenderViewport.Pos = new OvrVector2i(0, 0);
-      header.API = ovrRenderAPI_OpenGL;
     }
   }
 
@@ -82,18 +86,22 @@ public abstract class RiftApp extends LwjglApp {
   protected void onDestroy() {
     hmd.stopSensor();
     hmd.destroy();
+    Hmd.shutdown();
+  }
+
+  @Override
+  protected void setupContext() {
+    contextAttributes = new ContextAttribs(3, 3)
+    .withForwardCompatible(true)
+    .withProfileCore(true)
+    .withDebug(true);
   }
 
   @Override
   protected final void setupDisplay() {
-    contextAttributes = new ContextAttribs(4, 4)
-      .withForwardCompatible(true)
-      .withProfileCore(true)
-      .withDebug(true);
-    
     System.setProperty(
         "org.lwjgl.opengl.Window.undecorated", "true");
-    
+
     Rectangle targetRect = new Rectangle(
         hmdDesc.WindowsPos.x, hmdDesc.WindowsPos.y, 
         hmdDesc.Resolution.w, hmdDesc.Resolution.h);
@@ -110,9 +118,8 @@ public abstract class RiftApp extends LwjglApp {
       eyeTextures[eye].TextureId = 
           frameBuffers[eye].getTexture().id;
     }
-    
+
     RenderAPIConfig rc = new RenderAPIConfig();
-    rc.Header.API = ovrRenderAPI_OpenGL;
     rc.Header.RTSize = hmdDesc.Resolution;
     rc.Header.Multisample = 1;
 
@@ -137,9 +144,15 @@ public abstract class RiftApp extends LwjglApp {
       MatrixStack mv = MatrixStack.MODELVIEW;
       mv.push();
       {
-        mv.preTranslate(RiftUtils.toVector3f(pose.Position).mult(-1));
-        mv.preRotate(RiftUtils.toQuaternion(pose.Orientation).inverse());
-        mv.preTranslate(RiftUtils.toVector3f(eyeRenderDescs[eye].ViewAdjust));
+        mv.preTranslate(
+          RiftUtils.toVector3f(
+            pose.Position).mult(-1));
+        mv.preRotate(
+          RiftUtils.toQuaternion(
+            pose.Orientation).inverse());
+        mv.preTranslate(
+          RiftUtils.toVector3f(
+            eyeRenderDescs[eye].ViewAdjust));
         frameBuffers[eye].activate();
         renderScene();
         frameBuffers[eye].deactivate();
