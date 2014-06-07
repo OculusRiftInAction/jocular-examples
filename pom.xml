@@ -34,7 +34,7 @@
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>jovr</artifactId>
-      <version>[0.3.2, 0.3.3)</version>
+      <version>0.3.2.3</version>
     </dependency>
   </dependencies>
   <build>

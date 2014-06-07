@@ -16,6 +16,7 @@ import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
 import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.HmdDesc;
+import com.oculusvr.capi.OvrLibrary;
 import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
@@ -86,7 +87,7 @@ public abstract class RiftApp extends LwjglApp {
   protected void onDestroy() {
     hmd.stopSensor();
     hmd.destroy();
-    Hmd.shutdown();
+    OvrLibrary.INSTANCE.ovr_Shutdown();
   }
 
   @Override
