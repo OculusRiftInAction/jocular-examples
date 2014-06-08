@@ -78,7 +78,7 @@ public class RiftDemo extends RiftApp {
       Quaternion q = mv.getRotation();
       mv.identity().rotate(q);
       skyboxProgram.use();
-      MatrixStack.bindAll(skyboxProgram);
+      OpenGL.bindAll(skyboxProgram);
       glCullFace(GL_FRONT);
       skybox.bind();
       glDisable(GL_DEPTH_TEST);
@@ -90,14 +90,20 @@ public class RiftDemo extends RiftApp {
     mv.pop();
 
     cubeProgram.use();
-    MatrixStack.PROJECTION.bind(cubeProgram);
+    OpenGL.bindProjection(cubeProgram);
     cubeGeometry.bindVertexArray();
     for (Vector3f axis : AXES) {
       Vector3f offset = axis.mult(ipd * 8);
-      mv.push().translate(offset).scale(ipd).bind(cubeProgram).pop();
+
+      mv.push().translate(offset).scale(ipd);
+      OpenGL.bindModelview(cubeProgram);
       cubeGeometry.draw();
-      mv.push().translate(offset.mult(-1)).scale(ipd).bind(cubeProgram).pop();
+      mv.pop();
+
+      mv.push().translate(offset.mult(-1)).scale(ipd);
+      OpenGL.bindModelview(cubeProgram);
       cubeGeometry.draw();
+      mv.pop();
     }
   }
 
