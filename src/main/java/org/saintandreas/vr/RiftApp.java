@@ -49,7 +49,7 @@ public abstract class RiftApp extends LwjglApp {
 
     Hmd.initialize();
     try {
-      Thread.sleep(100);
+      Thread.sleep(400);
     } catch (InterruptedException e) {
       throw new IllegalStateException(e);
     }
