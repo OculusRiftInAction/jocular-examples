@@ -2,13 +2,13 @@ package org.saintandreas.vr;
 
 import static org.lwjgl.opengl.GL11.*;
 
+import org.saintandreas.gl.GlamourResources;
 import org.saintandreas.gl.IndexedGeometry;
 import org.saintandreas.gl.MatrixStack;
 import org.saintandreas.gl.OpenGL;
 import org.saintandreas.gl.buffers.VertexArray;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.math.Vector3f;
-import org.saintandreas.resources.BasicResource;
 
 import com.oculusvr.capi.OvrLibrary;
 
@@ -25,7 +25,8 @@ public class RiftDemo extends RiftApp {
     MatrixStack.MODELVIEW.lookat(Vector3f.UNIT_X.scale(ipd * 5), // eye position
         Vector3f.ZERO, // origin of the scene
         Vector3f.UNIT_Y); // up direction
-    program = new Program(new BasicResource("shaders/Colored.vs"), new BasicResource("shaders/Colored.fs"));
+    program = new Program(GlamourResources.SHADERS_COLORED_VS, 
+        GlamourResources.SHADERS_COLORED_FS);
     program.link();
     geometry = OpenGL.makeColorCube();
   }
