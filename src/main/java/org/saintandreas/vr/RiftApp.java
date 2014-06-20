@@ -48,7 +48,7 @@ public abstract class RiftApp extends LwjglApp {
   public RiftApp() {
     super();
 
-    OvrLibrary.INSTANCE.ovr_Initialize();
+    Hmd.initialize();
 
     hmd = openFirstHmd();
     if (null == hmd) {

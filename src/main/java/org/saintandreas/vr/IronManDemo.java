@@ -3,6 +3,7 @@ package org.saintandreas.vr;
 import static javax.measure.unit.SI.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL31.*;
 import gov.nasa.worldwind.geom.LatLon;
 import gov.nasa.worldwind.geom.Sector;
 
@@ -35,6 +36,7 @@ import org.saintandreas.gl.shaders.Attribute;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.gl.textures.Texture;
 import org.saintandreas.math.Matrix4f;
+import org.saintandreas.math.Quaternion;
 import org.saintandreas.math.Vector3f;
 import org.saintandreas.math.Vector4f;
 import org.saintandreas.resources.BasicResource;
@@ -44,6 +46,9 @@ import org.saintandreas.scene.ShaderNode;
 import org.saintandreas.worldwind.WorldWindUtils;
 
 import com.google.common.collect.Lists;
+import com.sixsense.api.AllControllerData;
+import com.sixsense.api.ControllerData;
+import com.sixsense.api.SixenseLibrary;
 
 
 public class IronManDemo extends RiftApp {
@@ -54,6 +59,7 @@ public class IronManDemo extends RiftApp {
   private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
   private static final double MAX_DISTANCE = 30000;
 
+  private AllControllerData hydra = new AllControllerData();
   private RootNode root = new RootNode();
   private Matrix4f camera = new Matrix4f();
   private double currentElevation = 0;
@@ -241,6 +247,58 @@ public class IronManDemo extends RiftApp {
     });
   }
 
+  public static Vector3f hydraPosition(ControllerData cd) {
+    return vecFromFloatArray(cd.pos).scale(0.001f);
+  }
+
+  public static Quaternion hydraRotation(ControllerData cd) {
+    return quatFromFloatArray(cd.rotQuat);
+  }
+
+  public static Vector3f vecFromFloatArray(float[] fs) {
+    return new Vector3f(fs[0], fs[1], fs[2]);
+  }
+
+  public static Quaternion quatFromFloatArray(float[] fs) {
+    return new Quaternion(fs[0], fs[1], fs[2], fs[3]);
+  }
+
+  protected SceneNode getHydraNode() {
+    return new SceneNode(()->{
+      MatrixStack mv = MatrixStack.MODELVIEW;
+      Program.clear();
+      mv.withPush(() -> {
+        mv.identity();
+        mv.translate(Vector3f.UNIT_Z.scale(-2));
+        glEnable(GL_DEPTH_TEST);
+        for (int i = 0; i < 2; ++i) {
+          Vector3f pos = hydraPosition(hydra.controllers[i]);
+          Quaternion rot = hydraRotation(hydra.controllers[i]);
+          mv.withPush(()->{
+            mv.translate(pos);
+            mv.rotate(rot);
+            mv.scale(0.1f);
+            OpenGL.drawColorCube();
+          });
+        }
+        glDisable(GL_PRIMITIVE_RESTART);
+//        mv.bindGl();
+//        glPointSize(20);
+//        glDisable(GL_DEPTH_TEST);
+//        glBegin(GL_POINTS);
+//        vertex(pos);
+//
+//        
+//        
+////        glVertex3f(pos[0] / 1000.0f, pos[1] / 1000.0f, 1 - (pos[2] / 1000.0f));
+////        pos = hydra.controllers[1].pos;
+////        glVertex3f(pos[0]/ 1000.0f, pos[1]/ 1000.0f, 1 + (pos[2]/ 1000.0f));
+//        glEnd();
+      });
+      MatrixStack.bindAllGl();
+    });
+  }
+
   @Override
   protected void setupContext() {
     pixelFormat = pixelFormat.withSamples(4).withDepthBits(16);
@@ -259,6 +317,7 @@ public class IronManDemo extends RiftApp {
     root.addChild(getTerrainNode());
     root.addChild(getAircraftNode());
     root.addChild(getAircraftDetailNode());
+    root.addChild(getHydraNode());
   }
 
   @Override
@@ -269,6 +328,12 @@ public class IronManDemo extends RiftApp {
         flights = Flight.getFlights();
       });
     }
+//    SixenseLibrary.INSTANCE.sixenseGetAllData(0, hydra);
+    SixenseLibrary.INSTANCE.sixenseSetActiveBase(0);
+    SixenseLibrary.INSTANCE.sixenseGetAllNewestData(hydra);
+    SixenseLibrary.INSTANCE.sixenseSetBaseColor((byte)255, (byte)0, (byte)255);
+//    SixenseLibrary.INSTANCE.sixenseGetNewestData(0, hydra.controllers[0]);
+//    SixenseLibrary.INSTANCE.sixenseGetNewestData(1, hydra.controllers[1]);
     while (Keyboard.next()) {
       if (Keyboard.getEventKeyState()) {
         switch (Keyboard.getEventKey()) {
@@ -325,6 +390,14 @@ public class IronManDemo extends RiftApp {
   }
 
   public IronManDemo() throws FileNotFoundException, IOException {
+    int result = SixenseLibrary.INSTANCE.sixenseInit();
+    int maxBases = SixenseLibrary.INSTANCE.sixenseGetMaxBases();
+    for (int i = 0; i < maxBases; ++i) {
+      int isConnected = SixenseLibrary.INSTANCE.sixenseIsBaseConnected( i);
+      System.out.println(String.format("%d %d", i, isConnected));
+    }
+    
+
 //    ValidationPreferences vp = new ValidationPreferences();
 //    vp.setMaxNumberOfPointsPerShape(1000000);
 //    ShapeFileReader r = new ShapeFileReader(new FileInputStream(new File(SHAPE_FILES[0])), vp);
