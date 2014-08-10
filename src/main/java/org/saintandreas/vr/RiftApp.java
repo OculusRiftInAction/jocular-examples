@@ -7,6 +7,7 @@ import static com.oculusvr.capi.OvrLibrary.ovrTrackingCaps.*;
 import java.awt.Rectangle;
 
 import org.lwjgl.opengl.ContextAttribs;
+import org.lwjgl.opengl.Display;
 import org.saintandreas.gl.FrameBuffer;
 import org.saintandreas.gl.MatrixStack;
 import org.saintandreas.gl.app.LwjglApp;
@@ -14,7 +15,7 @@ import org.saintandreas.math.Matrix4f;
 
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
-import com.oculusvr.capi.HmdDesc;
+import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
@@ -22,13 +23,13 @@ import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
 
 public abstract class RiftApp extends LwjglApp {
-  protected final HmdDesc hmd;
+  protected final Hmd hmd;
   private EyeRenderDesc eyeRenderDescs[] = null;
   private final FovPort fovPorts[] =
       (FovPort[])new FovPort().toArray(2);
   private final Texture eyeTextures[] =
       (Texture[])new Texture().toArray(2);
-  private Posef[] poses = 
+  private final Posef[] poses = 
       (Posef[])new Posef().toArray(2);
   private final FrameBuffer frameBuffers[] =
       new FrameBuffer[2];
@@ -38,10 +39,10 @@ public abstract class RiftApp extends LwjglApp {
 
 
 
-  private static HmdDesc openFirstHmd() {
-    HmdDesc hmd = HmdDesc.create(0);
+  private static Hmd openFirstHmd() {
+    Hmd hmd = Hmd.create(0);
     if (null == hmd) {
-      hmd = HmdDesc.createDebug(ovrHmd_DK1);
+      hmd = Hmd.createDebug(ovrHmd_DK1);
     }
     return hmd;
   }
@@ -49,7 +50,7 @@ public abstract class RiftApp extends LwjglApp {
   public RiftApp() {
     super();
 
-    HmdDesc.initialize();
+    Hmd.initialize();
     
     try {
       Thread.sleep(400);
@@ -64,7 +65,8 @@ public abstract class RiftApp extends LwjglApp {
     }
 
     if (0 == hmd.configureTracking(
-        ovrTrackingCap_Orientation, 0)) {
+        ovrTrackingCap_Orientation | 
+        ovrTrackingCap_Position, 0)) {
       throw new IllegalStateException(
           "Unable to start the sensor");
     }
@@ -72,7 +74,7 @@ public abstract class RiftApp extends LwjglApp {
     for (int eye = 0; eye < 2; ++eye) {
       fovPorts[eye] = hmd.DefaultEyeFov[eye];
       projections[eye] = RiftUtils.toMatrix4f(
-          HmdDesc.getPerspectiveProjection(
+          Hmd.getPerspectiveProjection(
               fovPorts[eye], 0.1f, 1000000f, true));
 
       Texture texture = eyeTextures[eye];
@@ -87,7 +89,7 @@ public abstract class RiftApp extends LwjglApp {
   @Override
   protected void onDestroy() {
     hmd.destroy();
-    HmdDesc.shutdown();
+    Hmd.shutdown();
   }
 
   @Override
@@ -124,17 +126,12 @@ public abstract class RiftApp extends LwjglApp {
     rc.Header.Multisample = 1;
 
     int distortionCaps = 
-      ovrDistortionCap_Chromatic | 
-      ovrDistortionCap_TimeWarp | 
+      ovrDistortionCap_Chromatic |
+      ovrDistortionCap_TimeWarp |
       ovrDistortionCap_Vignette;
 
     eyeRenderDescs = hmd.configureRendering(
         rc, distortionCaps, fovPorts);
-  }
-  
-  @Override
-  protected void finishFrame() {
-//    Display.update();
   }
 
   @Override
@@ -144,11 +141,11 @@ public abstract class RiftApp extends LwjglApp {
       int eye = hmd.EyeRenderOrder[i];
       MatrixStack.PROJECTION.set(projections[eye]);
       // This doesn't work as it breaks the contiguous nature of the array
-      Posef p = hmd.getEyePose(eye);
+      Posef pose = hmd.getEyePose(eye);
       // FIXME there has to be a better way to do this
-      poses[eye].Orientation = p.Orientation;
-      poses[eye].Position = p.Position;
-      
+      poses[eye].Orientation = pose.Orientation;
+      poses[eye].Position = pose.Position;
+
       MatrixStack mv = MatrixStack.MODELVIEW;
       mv.push();
       {
@@ -168,6 +165,12 @@ public abstract class RiftApp extends LwjglApp {
       mv.pop();
     }
     hmd.endFrame(poses, eyeTextures);
+  }
+
+  @Override
+  protected void finishFrame() {
+    Display.processMessages();
+//    Display.update();
   }
 
   protected abstract void renderScene();
