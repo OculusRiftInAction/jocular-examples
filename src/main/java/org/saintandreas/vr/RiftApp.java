@@ -3,6 +3,7 @@ package org.saintandreas.vr;
 import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
 import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
 import static com.oculusvr.capi.OvrLibrary.ovrTrackingCaps.*;
+import static com.oculusvr.capi.OvrLibrary.ovrRenderAPIType.*;
 
 import java.awt.Rectangle;
 
@@ -79,6 +80,7 @@ public abstract class RiftApp extends LwjglApp {
 
       Texture texture = eyeTextures[eye];
       TextureHeader header = texture.Header;
+      header.API = ovrRenderAPI_OpenGL;
       header.TextureSize = hmd.getFovTextureSize(
           eye, fovPorts[eye], 1.0f);
       header.RenderViewport.Size = header.TextureSize; 
