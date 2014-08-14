@@ -94,10 +94,16 @@ public abstract class RiftApp extends LwjglApp {
 
   @Override
   protected void setupContext() {
-    contextAttributes = new ContextAttribs(3, 3)
-    .withForwardCompatible(true)
-    .withProfileCore(true)
-    .withDebug(true);
+    // Bug in LWJGL on OSX returns a 2.1 context if you ask for 3.3, but returns 4.1 if you ask for 3.2
+    String osName = System.getProperty("os.name");
+    if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
+      contextAttributes = new ContextAttribs(3, 2);
+    } else {
+      contextAttributes = new ContextAttribs(3, 3);
+    }
+    contextAttributes = contextAttributes
+        .withProfileCore(true)
+        .withDebug(true);
   }
 
   @Override
