@@ -40,6 +40,11 @@ public class RiftDemo extends RiftApp {
 
   @Override
   protected void onKeyboardEvent() {
+    if (0 != hmd.getHSWDisplayState().Displayed) {
+      hmd.dismissHSWDisplay();
+      return;
+    }
+
     if (!Keyboard.getEventKeyState()) {
       super.onKeyboardEvent();
       return;
