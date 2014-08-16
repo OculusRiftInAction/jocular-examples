@@ -24,21 +24,16 @@ import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
 
 public abstract class RiftApp extends LwjglApp {
+
   protected final Hmd hmd;
-  private EyeRenderDesc eyeRenderDescs[] = null;
-  private final FovPort fovPorts[] =
-      (FovPort[])new FovPort().toArray(2);
-  private final Texture eyeTextures[] =
-      (Texture[])new Texture().toArray(2);
-  private final Posef[] poses = 
-      (Posef[])new Posef().toArray(2);
-  private final FrameBuffer frameBuffers[] =
-      new FrameBuffer[2];
-  private final Matrix4f projections[] =
-      new Matrix4f[2];
-  private int frameCount = -1;
+  protected final FovPort fovPorts[] = (FovPort[])new FovPort().toArray(2);
+  protected final Texture eyeTextures[] = (Texture[])new Texture().toArray(2);
+  protected final Posef[] poses = (Posef[])new Posef().toArray(2);
+  protected final FrameBuffer frameBuffers[] = new FrameBuffer[2];
+  protected final Matrix4f projections[] = new Matrix4f[2];
 
-
+  protected EyeRenderDesc eyeRenderDescs[] = null;
+  protected int frameCount = -1;
 
   private static Hmd openFirstHmd() {
     Hmd hmd = Hmd.create(0);
