@@ -19,7 +19,7 @@
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>glamour-lwjgl</artifactId>
-      <version>[1.0.6, 2)</version>
+      <version>[1.0.7, 2)</version>
     </dependency>
     <dependency>
       <groupId>org.saintandreas</groupId>
@@ -29,12 +29,12 @@
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>oria-resources</artifactId>
-      <version>[1.0.2, 2)</version>
+      <version>[1.0.3, 2)</version>
     </dependency>
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>jovr</artifactId>
-      <version>0.3.2.4</version>
+      <version>0.4.1.1</version>
     </dependency>
   </dependencies>
   <build>
