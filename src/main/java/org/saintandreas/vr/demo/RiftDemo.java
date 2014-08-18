@@ -1,5 +1,7 @@
 package org.saintandreas.vr.demo;
 
+import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_EYE_HEIGHT;
+import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_IPD;
 import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.*;
 import static org.lwjgl.opengl.GL11.*;
 
@@ -13,36 +15,35 @@ import org.saintandreas.vr.RiftApp;
 import com.oculusvr.capi.OvrLibrary;
 
 public class RiftDemo extends RiftApp {
-  private float ipd = OvrLibrary.OVR_DEFAULT_IPD;
-  private float eyeHeight = OvrLibrary.OVR_DEFAULT_EYE_HEIGHT;
+  private final float ipd;
+  private final float eyeHeight;
 
-  private Matrix4f player;
+  private Matrix4f worldToCamera;
 
 
   public RiftDemo() {
-    ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, ipd);
-    eyeHeight = hmd.getFloat(OvrLibrary.OVR_KEY_EYE_HEIGHT, ipd);
+    ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, OVR_DEFAULT_IPD);
+    eyeHeight = hmd.getFloat(OvrLibrary.OVR_KEY_EYE_HEIGHT, OVR_DEFAULT_EYE_HEIGHT);
     recenterView();
   }
 
   private void recenterView() {
     Vector3f center = Vector3f.UNIT_Y.mult(eyeHeight);
-    Vector3f eye = new Vector3f(0, eyeHeight, ipd * 5.0f);
-    player = Matrix4f.lookat(eye, center, Vector3f.UNIT_Y).invert();
+    Vector3f eye = new Vector3f(0, eyeHeight, ipd * 10.0f);
+    worldToCamera = Matrix4f.lookat(eye, center, Vector3f.UNIT_Y);
     hmd.recenterPose();
   }
 
   @Override
   public void update() {
     super.update();
-    MatrixStack.MODELVIEW.set(player.invert());
+    MatrixStack.MODELVIEW.set(worldToCamera);
   }
 
   @Override
   protected void onKeyboardEvent() {
     if (0 != hmd.getHSWDisplayState().Displayed) {
       hmd.dismissHSWDisplay();
-      return;
     }
 
     if (!Keyboard.getEventKeyState()) {
