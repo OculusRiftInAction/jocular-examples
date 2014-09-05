@@ -27,6 +27,11 @@ public class RiftDemo extends RiftApp {
     recenterView();
   }
 
+  @Override
+  protected void initGl() {
+    super.initGl();
+    hmd.enableHswDisplay(false);
+  }
   private void recenterView() {
     Vector3f center = Vector3f.UNIT_Y.mult(eyeHeight);
     Vector3f eye = new Vector3f(0, eyeHeight, ipd * 10.0f);
