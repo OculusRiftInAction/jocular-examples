@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="$encoding"?>
+<jnlp
+    spec="$jnlpspec"
+    codebase="https://dl.dropboxusercontent.com/u/6620757/jocular-examples/"
+    href="$outputFile">
+  <information>
+    <title>Jocular-Examples</title>
+    <vendor>Oculus Rift in Action</vendor>
+#if($project.Url)
+    <homepage href="$project.Url"/>
+#end
+#if($project.Description)
+    <description>$project.Description</description>
+#end
+#if($offlineAllowed)
+    <offline-allowed/>
+#end
+  </information>
+  <security>
+     <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="$j2seVersion"/>
+     $dependencies
+     $extensions
+  </resources>
+  <application-desc main-class="$mainClass"/>
+</jnlp>
+
