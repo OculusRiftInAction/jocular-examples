@@ -51,6 +51,44 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>webstart-maven-plugin</artifactId>
+        <version>1.0-beta-7-SNAPSHOT</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>jnlp</goal> <!-- use jnlp, jnlp-inline or jnlp-single as appropriate -->
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <sign>
+            <keystore>/Users/bdavis/.keystore</keystore>
+            <keypass>${keypass}</keypass>
+            <storepass>${storepass}</storepass>
+            <alias>saintandreas.org</alias>
+            <verify>true</verify>
+          </sign>
+          <jnlp>
+            <outputFile>jocular_examples.jnlp</outputFile> <!-- defaults to launch.jnlp -->
+            <mainClass>org.saintandreas.vr.demo.RiftDemo</mainClass>
+          </jnlp>
+          <updateManifestEntries>
+            <Application-Name>JocularExamples</Application-Name>
+            <Permissions>all-permissions</Permissions>
+          </updateManifestEntries>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>
