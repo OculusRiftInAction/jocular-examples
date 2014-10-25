@@ -198,15 +198,13 @@ public abstract class RiftApp extends LwjglApp {
       rc.PlatformData[i] = Pointer.createConstant(0);
     }
 
+    long nativeWindow = getNativeWindow();
     if (LWJGLUtil.PLATFORM_LINUX == LWJGLUtil.getPlatform()) {
-      long window = getNativeWindow();
-//      rc.PlatformData[0] = Pointer.createConstant(display);
-      rc.PlatformData[1] = Pointer.createConstant(window);
+      rc.PlatformData[1] = Pointer.createConstant(nativeWindow);
     }
 
     eyeRenderDescs = hmd.configureRendering(
         rc, distortionCaps, fovPorts);
-
 
     for (int eye = 0; eye < 2; ++eye) {
       this.eyeOffsets[eye].x = eyeRenderDescs[eye].HmdToEyeViewOffset.x;
@@ -214,18 +212,17 @@ public abstract class RiftApp extends LwjglApp {
       this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
     }
 
-//    if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
-//      long hwnd = getNativeWindow();
-//      OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(hwnd), null, null);
-//    }
+    if (LWJGLUtil.PLATFORM_LINUX != LWJGLUtil.getPlatform()) {
+      if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
+        OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(nativeWindow), null, null);
+      }
+    }
   }
 
   @Override
   public final void drawFrame() {
     ++frameCount;
     hmd.beginFrame(frameCount);
-    OvrVector3f eyeOffsets[] =
-        (OvrVector3f[])new OvrVector3f().toArray(2);
     Posef eyePoses[] = hmd.getEyePoses(frameCount, eyeOffsets);
     for (int i = 0; i < 2; ++i) {
       int eye = hmd.EyeRenderOrder[i];
@@ -245,9 +242,6 @@ public abstract class RiftApp extends LwjglApp {
         mv.preRotate(
           RiftUtils.toQuaternion(
             poses[eye].Orientation).inverse());
-        mv.preTranslate(
-          RiftUtils.toVector3f(
-            eyeRenderDescs[eye].HmdToEyeViewOffset));
         frameBuffers[eye].activate();
         renderScene();
         frameBuffers[eye].deactivate();
