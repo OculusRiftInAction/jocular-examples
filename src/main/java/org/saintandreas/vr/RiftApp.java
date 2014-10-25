@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
 import org.saintandreas.gl.FrameBuffer;
@@ -103,8 +104,9 @@ public abstract class RiftApp extends LwjglApp {
     Hmd.shutdown();
   }
 
+  private static long display;
   private static long getNativeWindow() {
-    long hwnd = -1;
+    long window = -1;
     try {
       Object displayImpl = null;
       Method[] displayMethods = Display.class.getDeclaredMethods();
@@ -115,18 +117,35 @@ public abstract class RiftApp extends LwjglApp {
           break;
         }
       }
-      Field[] windowsDisplayFields = displayImpl.getClass().getDeclaredFields();
-      for (Field f : windowsDisplayFields) {
-        if (f.getName().equals("hwnd")) {
-          f.setAccessible(true);
-          hwnd = (Long) f.get(displayImpl);
-          continue;
+      
+      String fieldName = null;
+      switch (LWJGLUtil.getPlatform()) {
+      case LWJGLUtil.PLATFORM_LINUX:
+        fieldName = "current_window";
+        break;
+      case LWJGLUtil.PLATFORM_WINDOWS:
+        fieldName = "hwnd";
+        break;
+      }
+      if (null != fieldName) {
+        Field[] windowsDisplayFields = displayImpl.getClass().getDeclaredFields();
+        for (Field f : windowsDisplayFields) {
+          if (f.getName().equals(fieldName)) {
+            f.setAccessible(true);
+            window = (Long) f.get(displayImpl);
+            continue;
+          }
+          if (f.getName().equals("display")) {
+            f.setAccessible(true);
+            display = (Long) f.get(displayImpl);
+            continue;
+          }
         }
       }
     } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
       throw new IllegalStateException(e);
     }
-    return hwnd;
+    return window;
   }
 
   @Override
@@ -175,8 +194,19 @@ public abstract class RiftApp extends LwjglApp {
       ovrDistortionCap_TimeWarp |
       ovrDistortionCap_Vignette;
 
+    for (int i = 0; i < rc.PlatformData.length; ++i) {
+      rc.PlatformData[i] = Pointer.createConstant(0);
+    }
+
+    if (LWJGLUtil.PLATFORM_LINUX == LWJGLUtil.getPlatform()) {
+      long window = getNativeWindow();
+//      rc.PlatformData[0] = Pointer.createConstant(display);
+      rc.PlatformData[1] = Pointer.createConstant(window);
+    }
+
     eyeRenderDescs = hmd.configureRendering(
         rc, distortionCaps, fovPorts);
+
 
     for (int eye = 0; eye < 2; ++eye) {
       this.eyeOffsets[eye].x = eyeRenderDescs[eye].HmdToEyeViewOffset.x;
@@ -184,10 +214,10 @@ public abstract class RiftApp extends LwjglApp {
       this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
     }
 
-    if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
-      long hwnd = getNativeWindow();
-      OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(hwnd), null, null);
-    }
+//    if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
+//      long hwnd = getNativeWindow();
+//      OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(hwnd), null, null);
+//    }
   }
 
   @Override
