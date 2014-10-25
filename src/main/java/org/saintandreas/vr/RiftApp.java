@@ -2,10 +2,13 @@ package org.saintandreas.vr;
 
 import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
 import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
-import static com.oculusvr.capi.OvrLibrary.ovrTrackingCaps.*;
 import static com.oculusvr.capi.OvrLibrary.ovrRenderAPIType.*;
+import static com.oculusvr.capi.OvrLibrary.ovrTrackingCaps.*;
 
 import java.awt.Rectangle;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
@@ -17,15 +20,21 @@ import org.saintandreas.math.Matrix4f;
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
 import com.oculusvr.capi.Hmd;
+import com.oculusvr.capi.OvrLibrary;
+import com.oculusvr.capi.OvrLibrary.ovrHmdCaps;
 import com.oculusvr.capi.OvrVector2i;
+import com.oculusvr.capi.OvrVector3f;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
 import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
+import com.sun.jna.Pointer;
 
 public abstract class RiftApp extends LwjglApp {
   protected final Hmd hmd;
   private EyeRenderDesc eyeRenderDescs[] = null;
+  private final OvrVector3f eyeOffsets[] =
+      (OvrVector3f[])new OvrVector3f().toArray(2);
   private final FovPort fovPorts[] =
       (FovPort[])new FovPort().toArray(2);
   private final Texture eyeTextures[] =
@@ -94,6 +103,32 @@ public abstract class RiftApp extends LwjglApp {
     Hmd.shutdown();
   }
 
+  private static long getNativeWindow() {
+    long hwnd = -1;
+    try {
+      Object displayImpl = null;
+      Method[] displayMethods = Display.class.getDeclaredMethods();
+      for (Method m : displayMethods) {
+        if (m.getName().equals("getImplementation")) {
+          m.setAccessible(true);
+          displayImpl = m.invoke(null, (Object[]) null);
+          break;
+        }
+      }
+      Field[] windowsDisplayFields = displayImpl.getClass().getDeclaredFields();
+      for (Field f : windowsDisplayFields) {
+        if (f.getName().equals("hwnd")) {
+          f.setAccessible(true);
+          hwnd = (Long) f.get(displayImpl);
+          continue;
+        }
+      }
+    } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+      throw new IllegalStateException(e);
+    }
+    return hwnd;
+  }
+
   @Override
   protected void setupContext() {
     // Bug in LWJGL on OSX returns a 2.1 context if you ask for 3.3, but returns 4.1 if you ask for 3.2
@@ -108,6 +143,7 @@ public abstract class RiftApp extends LwjglApp {
         .withDebug(true);
   }
 
+  
   @Override
   protected final void setupDisplay() {
     System.setProperty(
@@ -117,6 +153,7 @@ public abstract class RiftApp extends LwjglApp {
         hmd.WindowsPos.x, hmd.WindowsPos.y, 
         hmd.Resolution.w, hmd.Resolution.h);
     setupDisplay(targetRect);
+
   }
 
   @Override
@@ -140,16 +177,31 @@ public abstract class RiftApp extends LwjglApp {
 
     eyeRenderDescs = hmd.configureRendering(
         rc, distortionCaps, fovPorts);
+
+    for (int eye = 0; eye < 2; ++eye) {
+      this.eyeOffsets[eye].x = eyeRenderDescs[eye].HmdToEyeViewOffset.x;
+      this.eyeOffsets[eye].y = eyeRenderDescs[eye].HmdToEyeViewOffset.y;
+      this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
+    }
+
+    if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
+      long hwnd = getNativeWindow();
+      OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(hwnd), null, null);
+    }
   }
 
   @Override
   public final void drawFrame() {
-    hmd.beginFrame(++frameCount);
+    ++frameCount;
+    hmd.beginFrame(frameCount);
+    OvrVector3f eyeOffsets[] =
+        (OvrVector3f[])new OvrVector3f().toArray(2);
+    Posef eyePoses[] = hmd.getEyePoses(frameCount, eyeOffsets);
     for (int i = 0; i < 2; ++i) {
       int eye = hmd.EyeRenderOrder[i];
+      Posef pose = eyePoses[eye];
       MatrixStack.PROJECTION.set(projections[eye]);
       // This doesn't work as it breaks the contiguous nature of the array
-      Posef pose = hmd.getEyePose(eye);
       // FIXME there has to be a better way to do this
       poses[eye].Orientation = pose.Orientation;
       poses[eye].Position = pose.Position;
@@ -165,7 +217,7 @@ public abstract class RiftApp extends LwjglApp {
             poses[eye].Orientation).inverse());
         mv.preTranslate(
           RiftUtils.toVector3f(
-            eyeRenderDescs[eye].ViewAdjust));
+            eyeRenderDescs[eye].HmdToEyeViewOffset));
         frameBuffers[eye].activate();
         renderScene();
         frameBuffers[eye].deactivate();
