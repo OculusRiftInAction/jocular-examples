@@ -102,7 +102,6 @@ public abstract class RiftApp extends LwjglApp {
     Hmd.shutdown();
   }
 
-  private static long display;
   private static long getNativeWindow() {
     long window = -1;
     try {
@@ -131,11 +130,6 @@ public abstract class RiftApp extends LwjglApp {
           if (f.getName().equals(fieldName)) {
             f.setAccessible(true);
             window = (Long) f.get(displayImpl);
-            continue;
-          }
-          if (f.getName().equals("display")) {
-            f.setAccessible(true);
-            display = (Long) f.get(displayImpl);
             continue;
           }
         }
@@ -196,11 +190,6 @@ public abstract class RiftApp extends LwjglApp {
       rc.PlatformData[i] = Pointer.createConstant(0);
     }
 
-    long nativeWindow = getNativeWindow();
-    if (LWJGLUtil.PLATFORM_LINUX == LWJGLUtil.getPlatform()) {
-      rc.PlatformData[1] = Pointer.createConstant(nativeWindow);
-    }
-
     eyeRenderDescs = hmd.configureRendering(
         rc, distortionCaps, fovPorts);
 
@@ -210,7 +199,9 @@ public abstract class RiftApp extends LwjglApp {
       this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
     }
 
-    if (LWJGLUtil.PLATFORM_LINUX != LWJGLUtil.getPlatform()) {
+    // Native window support currently only available on windows
+    if (LWJGLUtil.PLATFORM_WINDOWS == LWJGLUtil.getPlatform()) {
+      long nativeWindow = getNativeWindow();
       if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
         OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(nativeWindow), null, null);
       }
@@ -251,6 +242,9 @@ public abstract class RiftApp extends LwjglApp {
 
   @Override
   protected void finishFrame() {
+    // Display update combines both input processing and
+    // buffer swapping.  We want only the input processing
+    // so we have to call processMessages.
     Display.processMessages();
 //    Display.update();
   }
