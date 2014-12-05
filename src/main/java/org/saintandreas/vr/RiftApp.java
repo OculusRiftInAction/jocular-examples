@@ -20,6 +20,7 @@ import org.saintandreas.math.Matrix4f;
 
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
+import com.oculusvr.capi.GLTexture;
 import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.OvrLibrary;
 import com.oculusvr.capi.OvrLibrary.ovrHmdCaps;
@@ -27,7 +28,6 @@ import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.OvrVector3f;
 import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
-import com.oculusvr.capi.Texture;
 import com.oculusvr.capi.TextureHeader;
 import com.sun.jna.Pointer;
 
@@ -38,8 +38,8 @@ public abstract class RiftApp extends LwjglApp {
       (OvrVector3f[])new OvrVector3f().toArray(2);
   private final FovPort fovPorts[] =
       (FovPort[])new FovPort().toArray(2);
-  private final Texture eyeTextures[] =
-      (Texture[])new Texture().toArray(2);
+  private final GLTexture eyeTextures[] =
+      (GLTexture[])new GLTexture().toArray(2);
   protected final Posef[] poses = 
       (Posef[])new Posef().toArray(2);
   private final FrameBuffer frameBuffers[] =
@@ -86,8 +86,8 @@ public abstract class RiftApp extends LwjglApp {
           Hmd.getPerspectiveProjection(
               fovPorts[eye], 0.1f, 1000000f, true));
 
-      Texture texture = eyeTextures[eye];
-      TextureHeader header = texture.Header;
+      GLTexture texture = eyeTextures[eye];
+      TextureHeader header = texture.ogl.Header;
       header.API = ovrRenderAPI_OpenGL;
       header.TextureSize = hmd.getFovTextureSize(
           eye, fovPorts[eye], 1.0f);
@@ -171,14 +171,14 @@ public abstract class RiftApp extends LwjglApp {
   protected void initGl() {
     super.initGl();
     for (int eye = 0; eye < 2; ++eye) {
-      TextureHeader eth = eyeTextures[eye].Header;
+      TextureHeader eth = eyeTextures[eye].ogl.Header;
       frameBuffers[eye] = new FrameBuffer(
           eth.TextureSize.w, eth.TextureSize.h);
-      eyeTextures[eye].TextureId = frameBuffers[eye].getTexture().id;
+      eyeTextures[eye].ogl.TexId = frameBuffers[eye].getTexture().id;
     }
 
     RenderAPIConfig rc = new RenderAPIConfig();
-    rc.Header.RTSize = hmd.Resolution;
+    rc.Header.BackBufferSize = hmd.Resolution;
     rc.Header.Multisample = 1;
 
     int distortionCaps = 
