@@ -1,7 +1,6 @@
 package org.saintandreas.vr.demo;
 
-import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_EYE_HEIGHT;
-import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_IPD;
+import static com.oculusvr.capi.OvrLibrary.*;
 import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.*;
 import static org.lwjgl.opengl.GL11.*;
 
@@ -27,11 +26,6 @@ public class RiftDemo extends RiftApp {
     recenterView();
   }
 
-  @Override
-  protected void initGl() {
-    super.initGl();
-    hmd.enableHswDisplay(false);
-  }
   private void recenterView() {
     Vector3f center = Vector3f.UNIT_Y.mult(eyeHeight);
     Vector3f eye = new Vector3f(0, eyeHeight, ipd * 10.0f);
