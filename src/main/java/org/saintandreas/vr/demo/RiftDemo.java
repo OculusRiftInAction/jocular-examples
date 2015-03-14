@@ -1,24 +1,23 @@
 package org.saintandreas.vr.demo;
 
-import static com.oculusvr.capi.OvrLibrary.*;
-import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.*;
-import static org.lwjgl.opengl.GL11.*;
+import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_EYE_HEIGHT;
+import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_IPD;
+import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.ovrHmdCap_LowPersistence;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.glClear;
 
 import org.lwjgl.input.Keyboard;
 import org.saintandreas.gl.MatrixStack;
 import org.saintandreas.gl.SceneHelpers;
-import org.saintandreas.math.Matrix4f;
 import org.saintandreas.math.Vector3f;
 import org.saintandreas.vr.RiftApp;
 
 import com.oculusvr.capi.OvrLibrary;
 
 public class RiftDemo extends RiftApp {
+  
   private final float ipd;
   private final float eyeHeight;
-
-  private Matrix4f worldToCamera;
-
 
   public RiftDemo() {
     ipd = hmd.getFloat(OvrLibrary.OVR_KEY_IPD, OVR_DEFAULT_IPD);
@@ -29,14 +28,8 @@ public class RiftDemo extends RiftApp {
   private void recenterView() {
     Vector3f center = Vector3f.UNIT_Y.mult(eyeHeight);
     Vector3f eye = new Vector3f(0, eyeHeight, ipd * 10.0f);
-    worldToCamera = Matrix4f.lookat(eye, center, Vector3f.UNIT_Y);
+    MatrixStack.MODELVIEW.lookat(eye, center, Vector3f.UNIT_Y);
     hmd.recenterPose();
-  }
-
-  @Override
-  public void update() {
-    super.update();
-    MatrixStack.MODELVIEW.set(worldToCamera);
   }
 
   @Override
@@ -77,10 +70,12 @@ public class RiftDemo extends RiftApp {
 
     MatrixStack mv = MatrixStack.MODELVIEW;
     mv.push();
-    {
-      mv.translate(new Vector3f(0, eyeHeight, 0 )).scale(ipd);
-      SceneHelpers.renderColorCube();
-    }
+    mv.translate(new Vector3f(0, eyeHeight, 0 )).scale(ipd);
+    SceneHelpers.renderColorCube();
+    mv.pop();
+    mv.push();
+    mv.translate(new Vector3f(0, eyeHeight / 2, 0 )).scale(new Vector3f(ipd / 2, eyeHeight, ipd / 2));
+    SceneHelpers.renderColorCube();
     mv.pop();
   }
 

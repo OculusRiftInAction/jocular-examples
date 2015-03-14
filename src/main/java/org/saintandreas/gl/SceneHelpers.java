@@ -84,7 +84,7 @@ public class SceneHelpers {
       cubeGeometry = OpenGL.makeColorCube();
     }
     if (null == cubeProgram) {
-      cubeProgram = new Program(ExampleResource.SHADERS_COLORED_VS, ExampleResource.SHADERS_COLORED_FS);
+      cubeProgram = new Program(ExampleResource.SHADERS_COLORCUBE_VS, ExampleResource.SHADERS_COLORCUBE_FS);
       cubeProgram.link();
     }
     glPrimitiveRestartIndex(Short.MAX_VALUE);
