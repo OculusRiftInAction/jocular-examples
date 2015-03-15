@@ -1,9 +1,13 @@
 package org.saintandreas.gl;
 
+import static java.lang.Math.PI;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL31.*;
 import static org.saintandreas.ExampleResource.*;
+import static org.saintandreas.gl.OpenGL.interleaveConstants;
+import static org.saintandreas.gl.OpenGL.makeQuad;
+import static org.saintandreas.gl.OpenGL.transformed;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,12 +18,15 @@ import org.saintandreas.gl.buffers.VertexArray;
 import org.saintandreas.gl.shaders.Attribute;
 import org.saintandreas.gl.shaders.Program;
 import org.saintandreas.gl.textures.Texture;
+import org.saintandreas.math.Matrix4f;
 import org.saintandreas.math.Quaternion;
+import org.saintandreas.math.Vector3f;
 import org.saintandreas.math.Vector4f;
 import org.saintandreas.resources.Resource;
 
 public class SceneHelpers {
   private static IndexedGeometry cubeGeometry;
+  private static IndexedGeometry cubeGeometryWithNormals;
   private static Program cubeProgram;
 
   private static IndexedGeometry floorGeometry;
@@ -79,9 +86,54 @@ public class SceneHelpers {
     VertexArray.unbind();
   }
   
+  private static Vector4f toNormal(Matrix4f m) {
+    Vector4f v = m.mult(new Vector4f(0, 0, 0, 1));
+    v = new Vector4f(new Vector3f(v.x, v.y, v.z).normalize(), 1);
+    return v;
+  }
+
+  private static List<Vector4f> makeNormalCubeVertices() {
+    List<Vector4f> result = new ArrayList<>(6 * 4 * 2);
+    Matrix4f m;
+    List<Vector4f> q = makeQuad(1.0f);
+    Vector3f side = new Vector3f(0, 0, 0.5f);
+
+    // Front
+    m = new Matrix4f().translate(new Vector3f(0, 0, 0.5f));
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+
+    // Back
+    m = new Matrix4f().rotate((float) PI, Vector3f.UNIT_X).translate(side);
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+
+    // Top
+    m = new Matrix4f().rotate((float) PI / -2f, Vector3f.UNIT_X).translate(side);
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+    
+    // Bottom
+    m = new Matrix4f().rotate((float) PI / 2f, Vector3f.UNIT_X).translate(side);
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+
+    // Left
+    m = new Matrix4f().rotate((float) PI / -2f, Vector3f.UNIT_Y).translate(side);
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+
+    // Right
+    m = new Matrix4f().rotate((float) PI / 2f, Vector3f.UNIT_Y).translate(side);
+    result.addAll(interleaveConstants(transformed(q, m), toNormal(m)));
+    
+    return result;
+  }
+
   public static void renderColorCube() {
-    if (null == cubeGeometry) {
-      cubeGeometry = OpenGL.makeColorCube();
+    if (null == cubeGeometryWithNormals) {
+      List<Vector4f> vertices = makeNormalCubeVertices();
+      List<Short> indices = OpenGL.makeColorCubeIndices();
+      Geometry.Builder builder = new IndexedGeometry.Builder(indices, vertices)
+          .withDrawType(GL_TRIANGLE_STRIP)
+          .withAttribute(Attribute.POSITION)
+          .withAttribute(Attribute.NORMAL);
+      cubeGeometryWithNormals = (IndexedGeometry) builder.build();
     }
     if (null == cubeProgram) {
       cubeProgram = new Program(ExampleResource.SHADERS_COLORCUBE_VS, ExampleResource.SHADERS_COLORCUBE_FS);
@@ -92,8 +144,8 @@ public class SceneHelpers {
 
     cubeProgram.use();
     OpenGL.bindAll(cubeProgram);
-    cubeGeometry.bindVertexArray();
-    cubeGeometry.draw();
+    cubeGeometryWithNormals.bindVertexArray();
+    cubeGeometryWithNormals.draw();
     Program.clear();
     VertexArray.unbind();
   }
