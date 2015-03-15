@@ -1,13 +1,11 @@
 package org.saintandreas.gl;
 
-import static java.lang.Math.PI;
+import static java.lang.Math.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL31.*;
 import static org.saintandreas.ExampleResource.*;
-import static org.saintandreas.gl.OpenGL.interleaveConstants;
-import static org.saintandreas.gl.OpenGL.makeQuad;
-import static org.saintandreas.gl.OpenGL.transformed;
+import static org.saintandreas.gl.OpenGL.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -152,12 +150,12 @@ public class SceneHelpers {
 
   // @formatter:off
   private static final Resource SKYBOX[] = {
-    IMAGES_SKY_CITY_XNEG_PNG,
     IMAGES_SKY_CITY_XPOS_PNG,
-    IMAGES_SKY_CITY_YNEG_PNG,
+    IMAGES_SKY_CITY_XNEG_PNG,
     IMAGES_SKY_CITY_YPOS_PNG,
+    IMAGES_SKY_CITY_YNEG_PNG,
+    IMAGES_SKY_CITY_ZPOS_PNG,
     IMAGES_SKY_CITY_ZNEG_PNG,
-    IMAGES_SKY_CITY_ZPOS_PNG
   };
   // @formatter:on
 
