@@ -56,6 +56,7 @@ public class RiftDemo extends RiftApp {
       } else {
         hmd.setEnabledCaps(caps | ovrHmdCap_LowPersistence);
       }
+      break;
 
     default:
       super.onKeyboardEvent();
