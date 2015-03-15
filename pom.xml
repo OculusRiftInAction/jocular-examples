@@ -10,9 +10,9 @@
   <version>1.0-SNAPSHOT</version>
 
   <scm>
-    <connection>scm:git:https://github.com/jherico/jocular-examples.git</connection>
-    <developerConnection>scm:git:git@github.com:jherico/jocular-examples.git</developerConnection>
-    <url>https://github.com/jherico/jocular-examples</url>
+    <connection>scm:git:https://github.com/OculusRiftInAction/jocular-examples.git</connection>
+    <developerConnection>scm:git:git@github.com:OculusRiftInAction/jocular-examples.git</developerConnection>
+    <url>https://github.com/OculusRiftInAction/jocular-examples</url>
   </scm>
 
   <dependencies>
