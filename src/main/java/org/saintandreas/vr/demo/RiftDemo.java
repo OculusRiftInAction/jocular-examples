@@ -1,10 +1,7 @@
 package org.saintandreas.vr.demo;
 
-import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_EYE_HEIGHT;
-import static com.oculusvr.capi.OvrLibrary.OVR_DEFAULT_IPD;
-import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.ovrHmdCap_LowPersistence;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.glClear;
+import static com.oculusvr.capi.OvrLibrary.*;
+import static com.oculusvr.capi.OvrLibrary.ovrHmdCaps.*;
 
 import org.lwjgl.input.Keyboard;
 import org.saintandreas.gl.MatrixStack;
@@ -65,7 +62,6 @@ public class RiftDemo extends RiftApp {
 
   @Override
   public void renderScene() {
-    glClear(GL_DEPTH_BUFFER_BIT);
     SceneHelpers.renderSkybox();
     SceneHelpers.renderFloor();
 

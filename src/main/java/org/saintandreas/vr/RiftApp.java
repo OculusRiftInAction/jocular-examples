@@ -4,6 +4,7 @@ import static com.oculusvr.capi.OvrLibrary.ovrDistortionCaps.*;
 import static com.oculusvr.capi.OvrLibrary.ovrHmdType.*;
 import static com.oculusvr.capi.OvrLibrary.ovrRenderAPIType.*;
 import static com.oculusvr.capi.OvrLibrary.ovrTrackingCaps.*;
+import static org.lwjgl.opengl.GL11.*;
 
 import java.awt.Rectangle;
 import java.lang.reflect.Field;
@@ -21,8 +22,10 @@ import org.saintandreas.math.Matrix4f;
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
 import com.oculusvr.capi.GLTexture;
+import com.oculusvr.capi.GLTextureData;
 import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.OvrLibrary;
+import com.oculusvr.capi.OvrLibrary.ovrEyeType;
 import com.oculusvr.capi.OvrLibrary.ovrHmdCaps;
 import com.oculusvr.capi.OvrVector2i;
 import com.oculusvr.capi.OvrVector3f;
@@ -30,9 +33,11 @@ import com.oculusvr.capi.Posef;
 import com.oculusvr.capi.RenderAPIConfig;
 import com.oculusvr.capi.TextureHeader;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
 
 public abstract class RiftApp extends LwjglApp {
   protected final Hmd hmd;
+  private static final boolean DISABLE_RIFT_RENDER = true;
   private EyeRenderDesc eyeRenderDescs[] = null;
   private final OvrVector3f eyeOffsets[] =
       (OvrVector3f[])new OvrVector3f().toArray(2);
@@ -87,7 +92,8 @@ public abstract class RiftApp extends LwjglApp {
               fovPorts[eye], 0.1f, 1000000f, true));
 
       GLTexture texture = eyeTextures[eye];
-      TextureHeader header = texture.ogl.Header;
+      texture.setType(GLTextureData.class);
+      TextureHeader header = texture.OGL.Header;
       header.API = ovrRenderAPI_OpenGL;
       header.TextureSize = hmd.getFovTextureSize(
           eye, fovPorts[eye], 1.0f);
@@ -150,7 +156,8 @@ public abstract class RiftApp extends LwjglApp {
       contextAttributes = new ContextAttribs(3, 3);
     }
     contextAttributes = contextAttributes
-        .withProfileCore(true)
+        .withProfileCompatibility(true)
+//        .withProfileCore(true)
         .withDebug(true);
   }
 
@@ -171,47 +178,57 @@ public abstract class RiftApp extends LwjglApp {
   protected void initGl() {
     super.initGl();
     for (int eye = 0; eye < 2; ++eye) {
-      TextureHeader eth = eyeTextures[eye].ogl.Header;
+      TextureHeader eth = eyeTextures[eye].OGL.Header;
       frameBuffers[eye] = new FrameBuffer(
           eth.TextureSize.w, eth.TextureSize.h);
-      eyeTextures[eye].ogl.TexId = frameBuffers[eye].getTexture().id;
+      eyeTextures[eye].OGL.TexId = frameBuffers[eye].getTexture().id;
     }
 
-    RenderAPIConfig rc = new RenderAPIConfig();
-    rc.Header.BackBufferSize = hmd.Resolution;
-    rc.Header.Multisample = 1;
+    if (!DISABLE_RIFT_RENDER) {
+      RenderAPIConfig rc = new RenderAPIConfig();
+      rc.Header.BackBufferSize = hmd.Resolution;
+      rc.Header.Multisample = 1;
+      rc.Header.API = ovrRenderAPI_OpenGL;
 
-    int distortionCaps = 
-      ovrDistortionCap_Chromatic |
-      ovrDistortionCap_TimeWarp |
-      ovrDistortionCap_Vignette;
+      int distortionCaps = 
+        ovrDistortionCap_TimeWarp |
+        ovrDistortionCap_Vignette;
 
-    for (int i = 0; i < rc.PlatformData.length; ++i) {
-      rc.PlatformData[i] = Pointer.createConstant(0);
-    }
+      for (int i = 0; i < rc.PlatformData.length; ++i) {
+        rc.PlatformData[i] = new IntByReference(0);
+      }
 
-    eyeRenderDescs = hmd.configureRendering(
-        rc, distortionCaps, fovPorts);
+      eyeRenderDescs = hmd.configureRendering(
+          rc, distortionCaps, fovPorts);
 
-    for (int eye = 0; eye < 2; ++eye) {
-      this.eyeOffsets[eye].x = eyeRenderDescs[eye].HmdToEyeViewOffset.x;
-      this.eyeOffsets[eye].y = eyeRenderDescs[eye].HmdToEyeViewOffset.y;
-      this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
-    }
-
-    // Native window support currently only available on windows
-    if (LWJGLUtil.PLATFORM_WINDOWS == LWJGLUtil.getPlatform()) {
-      long nativeWindow = getNativeWindow();
-      if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
-        OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(nativeWindow), null, null);
+      for (int eye = 0; eye < 2; ++eye) {
+        this.eyeOffsets[eye].x = eyeRenderDescs[eye].HmdToEyeViewOffset.x;
+        this.eyeOffsets[eye].y = eyeRenderDescs[eye].HmdToEyeViewOffset.y;
+        this.eyeOffsets[eye].z = eyeRenderDescs[eye].HmdToEyeViewOffset.z;
+      }
+      // Native window support currently only available on windows
+      if (LWJGLUtil.PLATFORM_WINDOWS == LWJGLUtil.getPlatform()) {
+        long nativeWindow = getNativeWindow();
+        if (0 == (hmd.getEnabledCaps() & ovrHmdCaps.ovrHmdCap_ExtendDesktop)) {
+          OvrLibrary.INSTANCE.ovrHmd_AttachToWindow(hmd, Pointer.createConstant(nativeWindow), null, null);
+        }
+      }
+    } else {
+      for (int eye = 0; eye < 2; ++eye) {
+        this.eyeOffsets[eye].x = OvrLibrary.OVR_DEFAULT_IPD / 2.0f * -1.0f;
+        this.eyeOffsets[eye].y = 0;
+        this.eyeOffsets[eye].z = 0;
       }
     }
+
   }
 
   @Override
   public final void drawFrame() {
     ++frameCount;
-    hmd.beginFrame(frameCount);
+    if (!DISABLE_RIFT_RENDER) {
+      hmd.beginFrame(frameCount);
+    }
     Posef eyePoses[] = hmd.getEyePoses(frameCount, eyeOffsets);
     for (int i = 0; i < 2; ++i) {
       int eye = hmd.EyeRenderOrder[i];
@@ -237,16 +254,51 @@ public abstract class RiftApp extends LwjglApp {
       }
       mv.pop();
     }
-    hmd.endFrame(poses, eyeTextures);
+    if (!DISABLE_RIFT_RENDER) {
+      hmd.endFrame(poses, eyeTextures);
+    } else {
+      MatrixStack.PROJECTION.identity();
+      MatrixStack mv = MatrixStack.MODELVIEW;
+      mv.push().identity();
+      glMatrixMode(GL_PROJECTION);
+      glLoadIdentity();
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      glViewport(0, 0, hmd.Resolution.w, hmd.Resolution.h);
+      glClearColor(0, 0, 1, 1);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glEnable(GL_TEXTURE_2D);
+      for (int i = 0; i < 2; ++i) {
+        int eye = hmd.EyeRenderOrder[i];
+        int x = eye == ovrEyeType.ovrEye_Left ? 1 : hmd.Resolution.w / 2 + 1; 
+        glViewport(x, 1, hmd.Resolution.w / 2 - 4, hmd.Resolution.h - 2);
+        glColor3f(1,1,1);
+        frameBuffers[eye].getTexture().bind();
+        glBegin(GL_QUADS);
+          glTexCoord2f(0, 0);
+          glVertex2f(-1, -1);
+          glTexCoord2f(1, 0);
+          glVertex2f(1, -1);
+          glTexCoord2f(1, 1);
+          glVertex2f(1, 1);
+          glTexCoord2f(0, 1);
+          glVertex2f(-1, 1);
+        glEnd();
+      }
+      mv.pop();
+    }
   }
 
   @Override
   protected void finishFrame() {
-    // Display update combines both input processing and
-    // buffer swapping.  We want only the input processing
-    // so we have to call processMessages.
-    Display.processMessages();
-//    Display.update();
+    if (!DISABLE_RIFT_RENDER) {
+      // Display update combines both input processing and
+      // buffer swapping.  We want only the input processing
+      // so we have to call processMessages.
+      Display.processMessages();
+    } else {
+      Display.update();
+    }
   }
 
   protected abstract void renderScene();
