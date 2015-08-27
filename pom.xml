@@ -34,7 +34,13 @@
     <dependency>
       <groupId>org.saintandreas</groupId>
       <artifactId>jovr</artifactId>
-      <version>0.4.4.0</version>
+      <version>0.7.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>1.7.12</version>
     </dependency>
   </dependencies>
   <build>

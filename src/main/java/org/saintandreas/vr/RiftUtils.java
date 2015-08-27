@@ -24,7 +24,10 @@ public class RiftUtils {
   }
 
   public static Matrix4f toMatrix4f(OvrMatrix4f m) {
-    return new org.saintandreas.math.Matrix4f(m.M).transpose();
+    if (null == m) {
+      return new Matrix4f();
+    }
+    return new Matrix4f(m.M).transpose();
   }
 
 }

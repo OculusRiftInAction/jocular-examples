@@ -22,6 +22,9 @@ import org.saintandreas.math.Vector3f;
 import org.saintandreas.math.Vector4f;
 import org.saintandreas.resources.Resource;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
+
 public class SceneHelpers {
   private static IndexedGeometry cubeGeometry;
   private static IndexedGeometry cubeGeometryWithNormals;
@@ -34,7 +37,38 @@ public class SceneHelpers {
   private static Program skyboxProgram;
   private static Texture skyboxTexture;
 
+  private static Program unitQuadProgram;
+  private static VertexArray unitQuadVao;
 
+  private static final String UNIT_QUAD_VS;
+  private static final String UNIT_QUAD_FS;
+  static {
+    try {
+      UNIT_QUAD_VS = Resources.toString(Resources.getResource("unitQuad.vs"), Charsets.UTF_8);
+      UNIT_QUAD_FS = Resources.toString(Resources.getResource("unitQuad.fs"), Charsets.UTF_8);
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  public static void renderTexturedQuad(int texture) {
+    if (null == unitQuadProgram) {
+      unitQuadProgram = new Program(UNIT_QUAD_VS, UNIT_QUAD_FS);
+      unitQuadProgram.link();
+    }
+    if (null == unitQuadVao) {
+      unitQuadVao = new VertexArray();
+    }
+    unitQuadProgram.use();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    unitQuadVao.bind();
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    Texture.unbind(GL_TEXTURE_2D);
+    Program.clear();
+    VertexArray.unbind();
+  }
 
   public static void renderFloor() {
     if (null == floorGeometry) {
@@ -57,6 +91,7 @@ public class SceneHelpers {
       builder.withDrawType(GL_TRIANGLE_STRIP).withAttribute(Attribute.POSITION).withAttribute(Attribute.TEX);
       floorGeometry = builder.build();
     }
+
     if (null == floorTexture) {
       try {
         floorTexture = Texture.loadImage(IMAGES_FLOOR_PNG);
