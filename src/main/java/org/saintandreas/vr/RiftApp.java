@@ -16,17 +16,19 @@ import org.saintandreas.math.Matrix4f;
 
 import com.oculusvr.capi.EyeRenderDesc;
 import com.oculusvr.capi.FovPort;
-import com.oculusvr.capi.GLTexture;
 import com.oculusvr.capi.Hmd;
 import com.oculusvr.capi.HmdDesc;
 import com.oculusvr.capi.LayerEyeFov;
+import com.oculusvr.capi.MirrorTexture;
+import com.oculusvr.capi.MirrorTextureDesc;
 import com.oculusvr.capi.OvrLibrary;
 import com.oculusvr.capi.OvrMatrix4f;
 import com.oculusvr.capi.OvrRecti;
 import com.oculusvr.capi.OvrSizei;
 import com.oculusvr.capi.OvrVector3f;
 import com.oculusvr.capi.Posef;
-import com.oculusvr.capi.SwapTextureSet;
+import com.oculusvr.capi.TextureSwapChain;
+import com.oculusvr.capi.TextureSwapChainDesc;
 import com.oculusvr.capi.ViewScaleDesc;
 
 public abstract class RiftApp extends LwjglApp {
@@ -40,8 +42,8 @@ public abstract class RiftApp extends LwjglApp {
   private final ViewScaleDesc viewScaleDesc = new ViewScaleDesc();
   private FrameBuffer frameBuffer = null;
   private int frameCount = -1;
-  private SwapTextureSet swapTexture = null;
-  private GLTexture mirrorTexture = null;
+  private TextureSwapChain swapChain = null;
+  private MirrorTexture mirrorTexture = null;
   private LayerEyeFov layer = new LayerEyeFov();
 
   public RiftApp() {
@@ -59,11 +61,9 @@ public abstract class RiftApp extends LwjglApp {
     }
     hmdDesc = hmd.getDesc();
 
-    hmd.configureTracking();
     for (int eye = 0; eye < 2; ++eye) {
       fovPorts[eye] = hmdDesc.DefaultEyeFov[eye];
-      OvrMatrix4f m = Hmd.getPerspectiveProjection(fovPorts[eye], 0.1f, 1000000f, ovrProjection_RightHanded
-          | ovrProjection_ClipRangeOpenGL);
+      OvrMatrix4f m = Hmd.getPerspectiveProjection(fovPorts[eye], 0.1f, 1000000f, ovrProjection_ClipRangeOpenGL);
       projections[eye] = RiftUtils.toMatrix4f(m);
       textureSizes[eye] = hmd.getFovTextureSize(eye, fovPorts[eye], 1.0f);
     }
@@ -91,14 +91,24 @@ public abstract class RiftApp extends LwjglApp {
   protected void initGl() {
     super.initGl();
     Display.setVSyncEnabled(false);
-    OvrSizei doubleSize = new OvrSizei();
-    doubleSize.w = textureSizes[0].w + textureSizes[1].w;
-    doubleSize.h = textureSizes[0].h;
-    swapTexture = hmd.createSwapTexture(doubleSize, GL_RGBA);
-    mirrorTexture = hmd.createMirrorTexture(new OvrSizei(width, height), GL_RGBA);
+    TextureSwapChainDesc desc = new TextureSwapChainDesc();
+    desc.Type = OvrLibrary.ovrTextureType.ovrTexture_2D;
+    desc.ArraySize = 1;
+    desc.Width = textureSizes[0].w + textureSizes[1].w;
+    desc.Height = textureSizes[0].h;
+    desc.MipLevels = 1;
+    desc.Format = OvrLibrary.ovrTextureFormat.OVR_FORMAT_R8G8B8A8_UNORM_SRGB;
+    desc.SampleCount = 1;
+    desc.StaticImage = false;
+    swapChain = hmd.createSwapTextureChain(desc);
+    MirrorTextureDesc mirrorDesc = new MirrorTextureDesc();
+    mirrorDesc.Format = OvrLibrary.ovrTextureFormat.OVR_FORMAT_R8G8B8A8_UNORM;
+    mirrorDesc.Width = width;
+    mirrorDesc.Height = height;
+    mirrorTexture = hmd.createMirrorTexture(mirrorDesc);
 
     layer.Header.Type = OvrLibrary.ovrLayerType.ovrLayerType_EyeFov;
-    layer.ColorTexure[0] = swapTexture;
+    layer.ColorTexure[0] = swapChain;
     layer.Fov = fovPorts;
     layer.RenderPose = poses;
     for (int eye = 0; eye < 2; ++eye) {
@@ -106,7 +116,7 @@ public abstract class RiftApp extends LwjglApp {
       layer.Viewport[eye].Size = textureSizes[eye];
     }
     layer.Viewport[1].Pos.x = layer.Viewport[1].Size.w;
-    frameBuffer = new FrameBuffer(doubleSize.w, doubleSize.h);
+    frameBuffer = new FrameBuffer(desc.Width, desc.Height);
 
     for (int eye = 0; eye < 2; ++eye) {
       EyeRenderDesc eyeRenderDesc = hmd.getRenderDesc(eye, fovPorts[eye]);
@@ -128,8 +138,8 @@ public abstract class RiftApp extends LwjglApp {
 
     MatrixStack pr = MatrixStack.PROJECTION;
     MatrixStack mv = MatrixStack.MODELVIEW;
-    GLTexture texture = swapTexture.getTexture(swapTexture.CurrentIndex);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture.ogl.TexId, 0);
+    int textureId = swapChain.getTextureId(swapChain.getCurrentIndex());
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureId, 0);
     for (int eye = 0; eye < 2; ++eye) {
       OvrRecti vp = layer.Viewport[eye];
       glScissor(vp.Pos.x, vp.Pos.y, vp.Size.w, vp.Size.h);
@@ -145,19 +155,18 @@ public abstract class RiftApp extends LwjglApp {
       renderScene();
       mv.pop();
     }
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture.ogl.TexId, 0);
-        frameBuffer.deactivate();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+    frameBuffer.deactivate();
 
+    swapChain.commit();
     hmd.submitFrame(frameCount, layer);
-    swapTexture.CurrentIndex++;
-    swapTexture.CurrentIndex %= swapTexture.TextureCount;
 
     // FIXME Copy the layer to the main window using a mirror texture
     glScissor(0, 0, width, height);
     glViewport(0, 0, width, height);
     glClearColor(0.5f, 0.5f, System.currentTimeMillis() % 1000 / 1000.0f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    SceneHelpers.renderTexturedQuad(mirrorTexture.ogl.TexId);
+    SceneHelpers.renderTexturedQuad(mirrorTexture.getTextureId());
   }
 
   @Override
